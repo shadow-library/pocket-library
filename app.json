@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "pocket-library",
+    "name": "Pocket Library",
     "slug": "pocket-library",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,9 +8,11 @@
     "scheme": "pocketlibrary",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.shadowapps.pocketlibrary"
     },
     "android": {
+      "package": "com.shadowapps.pocketlibrary",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

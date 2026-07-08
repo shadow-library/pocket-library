@@ -5,7 +5,7 @@
 /**
  * Importing user defined packages
  */
-import { LibraryScreen } from '@/screens/library/LibraryScreen';
+import { ReaderScreen } from '@/screens/reader/ReaderScreen';
 
 /**
  * Defining types
@@ -15,6 +15,6 @@ import { LibraryScreen } from '@/screens/library/LibraryScreen';
  * Declaring the constants
  */
 
-export default function LibraryRoute() {
-  return <LibraryScreen />;
+export default function ReaderRoute() {
+  return <ReaderScreen />;
 }

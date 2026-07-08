@@ -5,7 +5,7 @@
 /**
  * Importing user defined packages
  */
-import { LibraryScreen } from '@/screens/library/LibraryScreen';
+import { NovelScreen } from '@/screens/novel/NovelScreen';
 
 /**
  * Defining types
@@ -15,6 +15,6 @@ import { LibraryScreen } from '@/screens/library/LibraryScreen';
  * Declaring the constants
  */
 
-export default function LibraryRoute() {
-  return <LibraryScreen />;
+export default function NovelRoute() {
+  return <NovelScreen />;
 }
