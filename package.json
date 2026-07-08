@@ -46,7 +46,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "make:novel": "node scripts/make-novel.mjs",
+    "make:sample": "node scripts/make-novel.mjs sample/the-rain-road"
   },
   "private": true
 }

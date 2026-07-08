@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# generated novel packages (build output of scripts/make-novel.mjs)
+*.novel

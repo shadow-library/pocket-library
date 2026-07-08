@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "the-rain-road",
+  "title": "The Rain Road",
+  "author": "Jane Doe",
+  "description": "A short demo novel bundled with Pocket Library to show off offline reading, Markdown chapters, and private assets.",
+  "cover": "images/cover.png",
+  "tags": ["demo", "fantasy"],
+  "characters": [
+    { "name": "Elen", "image": "images/elen.png", "description": "A traveler waiting on the road." },
+    { "name": "The Stranger", "description": "Arrives with the rain." }
+  ],
+  "scenes": [
+    { "image": "images/rain.png", "chapter": "chapters/002.md", "caption": "The road, soaked through by the storm." }
+  ],
+  "chapters": [
+    { "title": "Chapter 1: Arrival", "file": "chapters/001.md" },
+    { "title": "Chapter 2: The Road", "file": "chapters/002.md" },
+    { "title": "Chapter 3: Onward", "file": "chapters/003.md" }
+  ]
+}
