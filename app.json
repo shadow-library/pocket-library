@@ -39,6 +39,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "093b574e-0bca-4942-b87d-d93de73188c3"
+      }
+    },
+    "owner": "shadow-apps"
   }
 }
