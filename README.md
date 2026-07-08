@@ -1,56 +1,128 @@
-# Welcome to your Expo app 👋
+# Pocket Library
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A fully offline mobile reader for locally imported novels, built with Expo (SDK 57) and Expo Router.
 
-## Get started
+Import a single self-contained **novel package**, and Pocket Library extracts it into the app's
+private storage and makes it available offline forever. There is no backend, no account, and no
+network access — everything works on-device after import.
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Local library** — every imported novel in one place, with a "Continue reading" shortcut.
+- **Novel details** — cover, author, description, characters, and a chapter list.
+- **Focused reader** — Markdown chapters (with inline images), scrollable, with a natural
+  "Next chapter" hand-off at the end of each chapter.
+- **Comfortable reading** — adjustable font size and light / dark / sepia reading themes.
+- **Tap to view assets** — tap the page while reading to reveal character portraits and this
+  chapter's scene art as thumbnails; tap one to view it full-screen.
+- **Remembers your place** — the last novel, chapter, and scroll position are restored on relaunch.
+- **Private by design** — imported chapters, covers, and images live only in the app's private
+  document directory. They never appear in the gallery, Photos, Downloads, or any public media
+  location, and no media-library permission is requested.
 
-2. Start the app
+## Running the app
 
-   ```bash
-   npx expo start
-   ```
+Bun is used for all commands.
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sh
+bun install
+bunx expo start        # then press i / a, or scan with Expo Go
+# or target a platform directly:
+bun run ios
+bun run android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Type-check and lint:
 
-### Other setup steps
+```sh
+bun run typecheck      # tsc --noEmit
+bun run lint
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## The `.novel` package format
 
-## Learn more
+A novel package is a **ZIP archive** with the extension `.novel`. Any extension is accepted on
+import — the package is validated by its contents, not its name.
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+manifest.json                # required, at the archive root
+cover.png                    # optional
+chapters/001.md, 002.md, …   # Markdown; a blank line separates paragraphs
+images/…                     # cover, character, and inline chapter images
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Paths inside `manifest.json` are relative to the archive root. Inline image paths inside a chapter's
+Markdown are relative to that chapter file (e.g. `![alt](../images/rain.png)`).
 
-## Join the community
+### `manifest.json`
 
-Join our community of developers creating universal apps.
+```json
+{
+  "schemaVersion": 1,
+  "id": "the-rain-road",
+  "title": "The Rain Road",
+  "author": "Jane Doe",
+  "description": "A short demo novel.",
+  "cover": "images/cover.png",
+  "tags": ["demo", "fantasy"],
+  "characters": [
+    { "name": "Elen", "image": "images/elen.png", "description": "A traveler." }
+  ],
+  "scenes": [
+    { "image": "images/rain.png", "chapter": "chapters/002.md", "caption": "The road, soaked through by the storm." }
+  ],
+  "chapters": [
+    { "title": "Chapter 1: Arrival", "file": "chapters/001.md" },
+    { "title": "Chapter 2: The Road", "file": "chapters/002.md" }
+  ]
+}
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Field           | Required | Notes                                                            |
+| --------------- | -------- | ---------------------------------------------------------------- |
+| `schemaVersion` | yes      | Must be `1`.                                                     |
+| `id`            | yes      | Stable, unique id. Re-importing the same id replaces the novel. |
+| `title`         | yes      | Display title.                                                  |
+| `chapters`      | yes      | Ordered array; array order is the reading order.               |
+| `cover`         | no       | Path to a cover image within the package.                       |
+| `author`, `description`, `tags`, `characters` | no | Shown on the novel detail screen. |
+| `scenes`        | no       | Reference/concept art — not a character portrait, not an inline chapter image. See below. |
+
+Chapters are Markdown and support headings, **bold**, *italic*, blockquotes, ordered/unordered
+lists, horizontal rules, and images.
+
+#### `scenes`
+
+Each entry is `{ "image": string, "chapter"?: string, "caption"?: string }`:
+
+- `image` (required) — path to the image within the package, same convention as `cover`.
+- `chapter` (optional) — the exact `file` value of one entry in `chapters`. Tags this scene to that
+  chapter only. Omit it and the scene shows up under **every** chapter instead.
+- `caption` (optional) — short text shown under the image.
+
+Tapping anywhere on the chapter page (while reading) reveals a thumbnail bar of that chapter's
+characters and scenes; tapping a thumbnail opens it full-screen, and tapping the full-screen image
+returns to the chapter. Scenes are distinct from images you embed directly in a chapter's Markdown
+(`![alt](path)`), which render inline as part of the chapter text.
+
+## Building a package
+
+Author a source folder that mirrors the layout above, then zip it with the bundled script:
+
+```sh
+# node scripts/make-novel.mjs <sourceDir> [outDir]
+bun run make:novel path/to/my-novel
+
+# or build the bundled sample (writes the-rain-road.novel to the current directory):
+bun run make:sample
+```
+
+A ready-to-edit sample lives in [`sample/the-rain-road/`](./sample/the-rain-road). Load the resulting
+`.novel` file onto your device/simulator and import it from the library screen.
+
+## Project structure & conventions
+
+Architecture and code conventions are documented in [`AGENTS.md`](./AGENTS.md). In short: thin Expo
+Router routes in `src/app` delegate to `src/screens`; cross-cutting runtime logic lives in
+`src/core` (`infrastructure → repositories → services` as class singletons); shared client state
+uses Zustand stores in `src/stores`.
