@@ -1,11 +1,13 @@
 /**
  * Importing npm packages
  */
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 /**
  * Importing user defined packages
  */
+import { FullScreenImageViewer } from '@/components/image-viewer';
 import { NovelCover } from '@/components/novel-cover';
 import { content } from '@/core/content';
 import { libraryService } from '@/core/services/library.service';
@@ -25,20 +27,41 @@ type NovelHeaderProps = {
  * Declaring the constants
  */
 
-const COVER_WIDTH = 128;
-const COVER_HEIGHT = 184;
+const COVER_WIDTH = 112;
+const COVER_HEIGHT = 160;
 
 export function NovelHeader({ novel }: NovelHeaderProps) {
   const theme = useTheme();
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
   const styles = createStyles(theme);
+  const coverUri = libraryService.coverUri(novel);
+  const author = novel.author !== undefined ? content.novel.byAuthor(novel.author) : content.novel.unknownAuthor;
 
   return (
     <View style={styles.container}>
-      <NovelCover uri={libraryService.coverUri(novel)} label={novel.title} width={COVER_WIDTH} height={COVER_HEIGHT} radius={theme.radii.lg} />
-      <Text style={styles.title}>{novel.title}</Text>
-      <Text style={styles.author}>{novel.author !== undefined ? content.novel.byAuthor(novel.author) : content.novel.unknownAuthor}</Text>
-      <Text style={styles.meta}>{content.novel.chapterCount(novel.chapters.length)}</Text>
-      {novel.description !== undefined && <Text style={styles.description}>{novel.description}</Text>}
+      <Pressable
+        disabled={coverUri === null}
+        accessibilityRole="button"
+        accessibilityLabel={novel.title}
+        onPress={() => setViewerUri(coverUri)}
+        style={({ pressed }) => [pressed && coverUri !== null && styles.pressed]}>
+        <NovelCover uri={coverUri} label={novel.title} width={COVER_WIDTH} height={COVER_HEIGHT} radius={theme.radii.lg} />
+      </Pressable>
+      <View style={styles.meta}>
+        <Text style={styles.title}>{novel.title}</Text>
+        <Text style={styles.author}>{author}</Text>
+        <Text style={styles.count}>{content.novel.chapterCount(novel.chapters.length)}</Text>
+        {novel.tags.length > 0 && (
+          <View style={styles.tags}>
+            {novel.tags.map((tag) => (
+              <View key={tag} style={styles.chip}>
+                <Text style={styles.chipLabel}>{`#${tag}`}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+      <FullScreenImageViewer uri={viewerUri} label={novel.title} onClose={() => setViewerUri(null)} />
     </View>
   );
 }
@@ -46,29 +69,44 @@ export function NovelHeader({ novel }: NovelHeaderProps) {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     container: {
-      alignItems: 'center',
-      gap: theme.spacing.sm,
-      paddingVertical: theme.spacing.lg,
+      flexDirection: 'row',
+      gap: theme.spacing.lg,
+      alignItems: 'flex-start',
+    },
+    pressed: {
+      opacity: 0.8,
+    },
+    meta: {
+      flex: 1,
+      gap: theme.spacing.xs,
     },
     title: {
       ...theme.type.title,
       color: theme.colors.text,
-      textAlign: 'center',
-      marginTop: theme.spacing.md,
     },
     author: {
       ...theme.type.body,
       color: theme.colors.textSecondary,
     },
-    meta: {
+    count: {
       ...theme.type.caption,
       color: theme.colors.textMuted,
     },
-    description: {
-      ...theme.type.body,
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
+    tags: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
       marginTop: theme.spacing.sm,
+    },
+    chip: {
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radii.pill,
+      backgroundColor: theme.colors.surface,
+    },
+    chipLabel: {
+      ...theme.type.caption,
+      color: theme.colors.textSecondary,
     },
   });
 }

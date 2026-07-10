@@ -5,6 +5,7 @@
 /**
  * Importing user defined packages
  */
+import { RecentScreen } from '@/screens/recent/RecentScreen';
 
 /**
  * Defining types
@@ -14,5 +15,6 @@
  * Declaring the constants
  */
 
-export const LIST_COVER_WIDTH = 56;
-export const LIST_COVER_HEIGHT = 80;
+export default function RecentRoute() {
+  return <RecentScreen />;
+}

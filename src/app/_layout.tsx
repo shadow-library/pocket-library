@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 /**
  * Importing user defined packages
  */
+import { AppSplash } from '@/components/app-splash';
 import { useAppBootstrap } from '@/hooks/use-app-bootstrap';
 
 /**
@@ -29,18 +30,22 @@ export default function RootLayout() {
   const scheme = useColorScheme();
   const ready = useAppBootstrap();
 
-  if (!ready) return null;
-
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
           <StatusBar style="auto" />
-          <Stack screenOptions={SCREEN_OPTIONS}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="novel/[id]" options={{ headerTitle: '', headerBackButtonDisplayMode: 'minimal' }} />
-            <Stack.Screen name="reader/[id]" />
-          </Stack>
+          {ready ? (
+            <Stack screenOptions={SCREEN_OPTIONS}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="novel/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="reader/[id]" options={{ headerShown: false }} />
+              <Stack.Screen name="import" options={{ headerShown: false }} />
+              <Stack.Screen name="about" options={{ headerShown: false }} />
+            </Stack>
+          ) : (
+            <AppSplash />
+          )}
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

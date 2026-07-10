@@ -2,7 +2,7 @@
  * Importing npm packages
  */
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Alert } from 'react-native';
 
 /**
@@ -10,6 +10,7 @@ import { Alert } from 'react-native';
  */
 import { content } from '@/core/content';
 import type { Novel } from '@/core/types/novel.types';
+import { useAppSettingsStore } from '@/stores/use-app-settings-store';
 import { useLibraryStore } from '@/stores/use-library-store';
 
 /**
@@ -18,11 +19,8 @@ import { useLibraryStore } from '@/stores/use-library-store';
 
 export type LibraryScreenModel = {
   novels: Novel[];
-  continueNovel: Novel | null;
-  importing: boolean;
-  onImport: () => void;
   openNovel: (id: string) => void;
-  continueReading: (novel: Novel) => void;
+  openImport: () => void;
   confirmRemove: (novel: Novel) => void;
 };
 
@@ -30,35 +28,28 @@ export type LibraryScreenModel = {
  * Declaring the constants
  */
 
+function byRecentlyOpened(a: Novel, b: Novel): number {
+  const aKey = a.progress?.updatedAt ?? null;
+  const bKey = b.progress?.updatedAt ?? null;
+  if (aKey !== null && bKey !== null) return bKey - aKey;
+  if (aKey !== null) return -1;
+  if (bKey !== null) return 1;
+  return b.importedAt - a.importedAt;
+}
+
 export function useLibraryScreen(): LibraryScreenModel {
   const router = useRouter();
   const novels = useLibraryStore((state) => state.novels);
-  const lastReadNovelId = useLibraryStore((state) => state.lastReadNovelId);
-  const importing = useLibraryStore((state) => state.importing);
-  const importError = useLibraryStore((state) => state.importError);
-  const importNovel = useLibraryStore((state) => state.importNovel);
   const removeNovel = useLibraryStore((state) => state.removeNovel);
-  const clearImportError = useLibraryStore((state) => state.clearImportError);
+  const librarySort = useAppSettingsStore((state) => state.librarySort);
 
-  const continueNovel = useMemo(() => novels.find((novel) => novel.id === lastReadNovelId) ?? null, [novels, lastReadNovelId]);
-
-  useEffect(() => {
-    if (importError === null) return;
-    Alert.alert(content.library.importCta, importError);
-    clearImportError();
-  }, [importError, clearImportError]);
+  const sortedNovels = useMemo(() => {
+    const list = [...novels];
+    return librarySort === 'title' ? list.sort((a, b) => a.title.localeCompare(b.title)) : list.sort(byRecentlyOpened);
+  }, [novels, librarySort]);
 
   const openNovel = useCallback((id: string) => router.push({ pathname: '/novel/[id]', params: { id } }), [router]);
-
-  const continueReading = useCallback(
-    (novel: Novel) => router.push({ pathname: '/reader/[id]', params: { id: novel.id, chapter: String(novel.progress?.chapterIndex ?? 0) } }),
-    [router],
-  );
-
-  const onImport = useCallback(async () => {
-    const result = await importNovel();
-    if (result.status === 'imported') router.push({ pathname: '/novel/[id]', params: { id: result.novel.id } });
-  }, [importNovel, router]);
+  const openImport = useCallback(() => router.push('/import'), [router]);
 
   const confirmRemove = useCallback(
     (novel: Novel) => {
@@ -70,5 +61,10 @@ export function useLibraryScreen(): LibraryScreenModel {
     [removeNovel],
   );
 
-  return { novels, continueNovel, importing, onImport, openNovel, continueReading, confirmRemove };
+  return {
+    novels: sortedNovels,
+    openNovel,
+    openImport,
+    confirmRemove,
+  };
 }

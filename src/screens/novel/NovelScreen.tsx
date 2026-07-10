@@ -1,19 +1,21 @@
 /**
  * Importing npm packages
  */
-import { Stack } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 /**
  * Importing user defined packages
  */
+import { ChapterList } from '@/components/chapter-list';
+import { PrimaryButton } from '@/components/primary-button';
+import { ScreenHeader } from '@/components/screen-header';
 import { content } from '@/core/content';
 import type { AppTheme } from '@/core/theme';
+import type { Novel } from '@/core/types/novel.types';
 import { useTheme } from '@/hooks/use-theme';
 import { CharacterStrip } from '@/screens/novel/components/CharacterStrip';
-import { ChapterList } from '@/screens/novel/components/ChapterList';
-import { NovelActions } from '@/screens/novel/components/NovelActions';
 import { NovelHeader } from '@/screens/novel/components/NovelHeader';
+import { NovelSynopsis } from '@/screens/novel/components/NovelSynopsis';
 import { useNovelScreen } from '@/screens/novel/hooks/useNovelScreen';
 
 /**
@@ -24,6 +26,12 @@ import { useNovelScreen } from '@/screens/novel/hooks/useNovelScreen';
  * Declaring the constants
  */
 
+function percentOf(novel: Novel): number {
+  if (novel.progress === undefined) return 0;
+  const total = Math.max(1, novel.chapters.length);
+  return Math.round(((novel.progress.chapterIndex + novel.progress.scrollFraction) / total) * 100);
+}
+
 export function NovelScreen() {
   const model = useNovelScreen();
   const theme = useTheme();
@@ -31,22 +39,23 @@ export function NovelScreen() {
 
   if (model.novel === null) {
     return (
-      <View style={styles.notFound}>
-        <Stack.Screen options={{ title: '' }} />
+      <View style={styles.container}>
+        <ScreenHeader title="" back />
         <Text style={styles.notFoundText}>{content.common.notFound}</Text>
       </View>
     );
   }
 
   const novel = model.novel;
-  const startLabel = model.hasProgress ? content.novel.continueReading : content.novel.startReading;
+  const startLabel = model.hasProgress ? content.novel.continuePercent(percentOf(novel)) : content.novel.startReading;
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: novel.title }} />
+      <ScreenHeader title="" back action={{ icon: 'trash-2', onPress: model.confirmRemove, label: content.novel.remove }} />
       <ScrollView contentContainerStyle={styles.content}>
         <NovelHeader novel={novel} />
-        <NovelActions startLabel={startLabel} onStart={model.startReading} onRemove={model.confirmRemove} />
+        <PrimaryButton label={startLabel} onPress={model.startReading} />
+        {novel.description !== undefined && <NovelSynopsis text={novel.description} />}
         {novel.characters.length > 0 && <CharacterStrip novelId={novel.id} characters={novel.characters} />}
         <ChapterList chapters={novel.chapters} currentIndex={novel.progress?.chapterIndex ?? null} onSelect={model.openChapter} />
       </ScrollView>
@@ -65,16 +74,11 @@ function createStyles(theme: AppTheme) {
       gap: theme.spacing.xl,
       paddingBottom: theme.spacing.xxxl,
     },
-    notFound: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.colors.background,
-      padding: theme.spacing.xl,
-    },
     notFoundText: {
       ...theme.type.body,
       color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginTop: theme.spacing.xxxl,
     },
   });
 }

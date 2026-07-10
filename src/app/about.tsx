@@ -5,6 +5,7 @@
 /**
  * Importing user defined packages
  */
+import { AboutScreen } from '@/screens/about/AboutScreen';
 
 /**
  * Defining types
@@ -14,5 +15,6 @@
  * Declaring the constants
  */
 
-export const LIST_COVER_WIDTH = 56;
-export const LIST_COVER_HEIGHT = 80;
+export default function AboutRoute() {
+  return <AboutScreen />;
+}
