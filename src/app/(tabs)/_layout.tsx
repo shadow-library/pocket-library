@@ -3,6 +3,7 @@
  */
 import { Feather } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * Importing user defined packages
@@ -18,8 +19,12 @@ import { useTheme } from '@/hooks/use-theme';
  * Declaring the constants
  */
 
+const TAB_BAR_BASE_HEIGHT = 68;
+const TAB_BAR_VERTICAL_PADDING = 10;
+
 export default function TabsLayout() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -27,7 +32,15 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.accent,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarStyle: { backgroundColor: theme.colors.surfaceElevated, borderTopColor: theme.colors.border, borderTopWidth: 1 },
+        tabBarStyle: {
+          backgroundColor: theme.colors.surfaceElevated,
+          borderTopColor: theme.colors.border,
+          borderTopWidth: 1,
+          height: TAB_BAR_BASE_HEIGHT + insets.bottom,
+          paddingTop: TAB_BAR_VERTICAL_PADDING,
+          paddingBottom: TAB_BAR_VERTICAL_PADDING + insets.bottom,
+        },
+        tabBarIconStyle: { marginBottom: 4 },
         tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11 },
         sceneStyle: { backgroundColor: theme.colors.background },
       }}>

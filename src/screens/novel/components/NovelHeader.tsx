@@ -32,9 +32,10 @@ const COVER_HEIGHT = 160;
 
 export function NovelHeader({ novel }: NovelHeaderProps) {
   const theme = useTheme();
-  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const styles = createStyles(theme);
   const coverUri = libraryService.coverUri(novel);
+  const coverImages = coverUri !== null ? [{ uri: coverUri, label: novel.title }] : [];
   const author = novel.author !== undefined ? content.novel.byAuthor(novel.author) : content.novel.unknownAuthor;
 
   return (
@@ -43,7 +44,7 @@ export function NovelHeader({ novel }: NovelHeaderProps) {
         disabled={coverUri === null}
         accessibilityRole="button"
         accessibilityLabel={novel.title}
-        onPress={() => setViewerUri(coverUri)}
+        onPress={() => setViewerIndex(0)}
         style={({ pressed }) => [pressed && coverUri !== null && styles.pressed]}>
         <NovelCover uri={coverUri} label={novel.title} width={COVER_WIDTH} height={COVER_HEIGHT} radius={theme.radii.lg} />
       </Pressable>
@@ -61,7 +62,7 @@ export function NovelHeader({ novel }: NovelHeaderProps) {
           </View>
         )}
       </View>
-      <FullScreenImageViewer uri={viewerUri} label={novel.title} onClose={() => setViewerUri(null)} />
+      <FullScreenImageViewer images={coverImages} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
     </View>
   );
 }

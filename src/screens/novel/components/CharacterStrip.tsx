@@ -33,8 +33,16 @@ const AVATAR_SIZE = 72;
 export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
-  const [viewing, setViewing] = useState<Character | null>(null);
-  const viewerUri = viewing !== null && viewing.imagePath !== undefined ? libraryService.assetUri(novelId, viewing.imagePath) : null;
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  // Only portrait-bearing characters are viewable, so the gallery skips the rest and each avatar maps
+  // to its position within that filtered gallery (-1 when it has no image).
+  const gallery: { uri: string; label: string }[] = [];
+  const galleryIndexByCharacter = characters.map((character) => {
+    if (character.imagePath === undefined) return -1;
+    gallery.push({ uri: libraryService.assetUri(novelId, character.imagePath), label: character.name });
+    return gallery.length - 1;
+  });
 
   return (
     <View style={styles.section}>
@@ -47,7 +55,7 @@ export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
             disabled={character.imagePath === undefined}
             accessibilityRole="button"
             accessibilityLabel={character.name}
-            onPress={() => setViewing(character)}>
+            onPress={() => setViewerIndex(galleryIndexByCharacter[index])}>
             {character.imagePath !== undefined ? (
               <Image source={{ uri: libraryService.assetUri(novelId, character.imagePath) }} style={styles.avatar} contentFit="cover" transition={150} />
             ) : (
@@ -61,7 +69,7 @@ export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
           </Pressable>
         ))}
       </ScrollView>
-      <FullScreenImageViewer uri={viewerUri} label={viewing?.name} onClose={() => setViewing(null)} />
+      <FullScreenImageViewer images={gallery} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
     </View>
   );
 }

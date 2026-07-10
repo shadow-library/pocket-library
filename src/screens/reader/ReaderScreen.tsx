@@ -1,6 +1,7 @@
 /**
  * Importing npm packages
  */
+import { StatusBar } from 'expo-status-bar';
 import { useRef } from 'react';
 import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -38,6 +39,7 @@ export function ReaderScreen() {
 
   return (
     <View style={styles.page}>
+      <StatusBar style={model.theme === 'dark' ? 'light' : 'dark'} />
       <Animated.View style={[styles.slide, { transform: [{ translateY: model.slideY }] }]}>
         <ScrollView
           ref={scrollRef}
@@ -56,6 +58,7 @@ export function ReaderScreen() {
           </GestureDetector>
         </ScrollView>
       </Animated.View>
+      <View style={styles.topInsetCover} pointerEvents="none" />
       <View style={styles.progressBar} pointerEvents="none">
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${model.progressPercent}%` }]} />
@@ -107,6 +110,14 @@ function createStyles(palette: ReadingPalette, topInset: number, bottomInset: nu
     },
     slide: {
       flex: 1,
+    },
+    topInsetCover: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: topInset,
+      backgroundColor: palette.background,
     },
     content: {
       paddingHorizontal: 24,

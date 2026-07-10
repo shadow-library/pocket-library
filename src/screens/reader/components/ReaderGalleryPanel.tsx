@@ -27,7 +27,8 @@ type ReaderGalleryPanelProps = {
 type GallerySectionProps = {
   heading: string;
   assets: ReaderImageAsset[];
-  onSelect: (asset: ReaderImageAsset) => void;
+  baseIndex: number;
+  onSelect: (index: number) => void;
   styles: ReturnType<typeof createStyles>;
 };
 
@@ -40,11 +41,14 @@ const THUMB_SIZE = 64;
 // The sheet's Gallery tab: round thumbnails with the current chapter's images first (inline images
 // plus scenes), followed by the novel's character portraits.
 export function ReaderGalleryPanel({ palette, characters, images, scenes }: ReaderGalleryPanelProps) {
-  const [selected, setSelected] = useState<ReaderImageAsset | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const styles = createStyles(palette);
   const chapterAssets = [...images, ...scenes];
+  // One combined gallery (chapter images first, then character portraits) so a swipe pages through
+  // every image in the tab regardless of which section the reader opened from.
+  const gallery = [...chapterAssets, ...characters];
 
-  if (chapterAssets.length === 0 && characters.length === 0) return <Text style={styles.empty}>{content.reader.gallery.empty}</Text>;
+  if (gallery.length === 0) return <Text style={styles.empty}>{content.reader.gallery.empty}</Text>;
 
   return (
     <View style={styles.container}>
@@ -52,14 +56,16 @@ export function ReaderGalleryPanel({ palette, characters, images, scenes }: Read
         <Text style={styles.title}>{content.reader.gallery.title}</Text>
         <Text style={styles.hint}>{content.reader.gallery.hint}</Text>
       </View>
-      {chapterAssets.length > 0 && <GallerySection heading={content.reader.gallery.thisChapter} assets={chapterAssets} onSelect={setSelected} styles={styles} />}
-      {characters.length > 0 && <GallerySection heading={content.reader.gallery.charactersHeading} assets={characters} onSelect={setSelected} styles={styles} />}
-      <FullScreenImageViewer uri={selected?.uri ?? null} label={selected?.label} onClose={() => setSelected(null)} />
+      {chapterAssets.length > 0 && <GallerySection heading={content.reader.gallery.thisChapter} assets={chapterAssets} baseIndex={0} onSelect={setSelected} styles={styles} />}
+      {characters.length > 0 && (
+        <GallerySection heading={content.reader.gallery.charactersHeading} assets={characters} baseIndex={chapterAssets.length} onSelect={setSelected} styles={styles} />
+      )}
+      <FullScreenImageViewer images={gallery} startIndex={selected} onClose={() => setSelected(null)} />
     </View>
   );
 }
 
-function GallerySection({ heading, assets, onSelect, styles }: GallerySectionProps) {
+function GallerySection({ heading, assets, baseIndex, onSelect, styles }: GallerySectionProps) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{heading}</Text>
@@ -69,7 +75,7 @@ function GallerySection({ heading, assets, onSelect, styles }: GallerySectionPro
             key={`${asset.uri}-${index}`}
             accessibilityRole="button"
             accessibilityLabel={asset.label.length > 0 ? asset.label : heading}
-            onPress={() => onSelect(asset)}
+            onPress={() => onSelect(baseIndex + index)}
             style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
             <Image source={{ uri: asset.uri }} style={styles.thumb} contentFit="cover" transition={150} />
             {asset.label.length > 0 && (
