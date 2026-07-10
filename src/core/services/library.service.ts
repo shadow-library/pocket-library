@@ -7,11 +7,15 @@
  */
 import { libraryRepository } from '@/core/repositories/library.repository';
 import { novelAssetRepository } from '@/core/repositories/novel-asset.repository';
-import type { Novel } from '@/core/types/novel.types';
+import type { Character, Novel } from '@/core/types/novel.types';
 
 /**
  * Defining types
  */
+
+// One viewable image of a character: the resolved uri plus a display label — the character name for the
+// base portrait, or "Name · Outfit" for a labelled variant.
+export type CharacterImage = { uri: string; label: string };
 
 /**
  * Declaring the constants
@@ -57,6 +61,18 @@ class LibraryService {
 
   chapterText(novelId: string, relativePath: string): string {
     return this.assets.readChapter(novelId, relativePath);
+  }
+
+  // The character's viewable images in display order: base portrait first (when present), then each
+  // outfit/scene variant. The first entry doubles as the strip avatar; `length - 1` is the "+N" count.
+  characterImages(novelId: string, character: Character): CharacterImage[] {
+    const images: CharacterImage[] = [];
+    if (character.imagePath !== undefined) images.push({ uri: this.assets.assetUri(novelId, character.imagePath), label: character.name });
+    for (const variant of character.variants) {
+      const label = variant.label !== undefined && variant.label.length > 0 ? `${character.name} · ${variant.label}` : character.name;
+      images.push({ uri: this.assets.assetUri(novelId, variant.imagePath), label });
+    }
+    return images;
   }
 }
 

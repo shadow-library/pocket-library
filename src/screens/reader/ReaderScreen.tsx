@@ -86,7 +86,7 @@ export function ReaderScreen() {
         novelTitle={model.novelTitle}
         coverUri={model.coverUri}
         onAbout={model.openAbout}
-        characters={model.characterImages}
+        characters={model.characterGalleries}
         images={model.chapterImages}
         scenes={model.galleryScenes}
         fontScale={model.fontScale}

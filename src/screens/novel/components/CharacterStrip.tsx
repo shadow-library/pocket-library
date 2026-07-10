@@ -8,7 +8,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 /**
  * Importing user defined packages
  */
-import { FullScreenImageViewer } from '@/components/image-viewer';
+import { FullScreenImageViewer, type ViewerImage } from '@/components/image-viewer';
+import { VariantCountBadge } from '@/components/variant-count-badge';
 import { content } from '@/core/content';
 import { libraryService } from '@/core/services/library.service';
 import type { AppTheme } from '@/core/theme';
@@ -33,43 +34,44 @@ const AVATAR_SIZE = 72;
 export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
-  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  // The tapped character; its portrait + variants feed the full-screen swipe viewer.
+  const [selected, setSelected] = useState<number | null>(null);
 
-  // Only portrait-bearing characters are viewable, so the gallery skips the rest and each avatar maps
-  // to its position within that filtered gallery (-1 when it has no image).
-  const gallery: { uri: string; label: string }[] = [];
-  const galleryIndexByCharacter = characters.map((character) => {
-    if (character.imagePath === undefined) return -1;
-    gallery.push({ uri: libraryService.assetUri(novelId, character.imagePath), label: character.name });
-    return gallery.length - 1;
-  });
+  const perCharacter = characters.map((character) => libraryService.characterImages(novelId, character));
+  const viewerImages: ViewerImage[] = selected === null ? [] : perCharacter[selected];
 
   return (
     <View style={styles.section}>
       <Text style={styles.heading}>{content.novel.charactersHeading}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
-        {characters.map((character, index) => (
-          <Pressable
-            key={`${character.name}-${index}`}
-            style={({ pressed }) => [styles.item, pressed && character.imagePath !== undefined && styles.itemPressed]}
-            disabled={character.imagePath === undefined}
-            accessibilityRole="button"
-            accessibilityLabel={character.name}
-            onPress={() => setViewerIndex(galleryIndexByCharacter[index])}>
-            {character.imagePath !== undefined ? (
-              <Image source={{ uri: libraryService.assetUri(novelId, character.imagePath) }} style={styles.avatar} contentFit="cover" transition={150} />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarInitial}>{character.name.charAt(0).toUpperCase()}</Text>
+        {characters.map((character, index) => {
+          const images = perCharacter[index];
+          return (
+            <Pressable
+              key={`${character.name}-${index}`}
+              style={({ pressed }) => [styles.item, pressed && images.length > 0 && styles.itemPressed]}
+              disabled={images.length === 0}
+              accessibilityRole="button"
+              accessibilityLabel={character.name}
+              onPress={() => setSelected(index)}>
+              <View style={styles.avatarWrap}>
+                {images.length > 0 ? (
+                  <Image source={{ uri: images[0].uri }} style={styles.avatar} contentFit="cover" transition={150} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarInitial}>{character.name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
+                <VariantCountBadge count={images.length - 1} />
               </View>
-            )}
-            <Text style={styles.name} numberOfLines={1}>
-              {character.name}
-            </Text>
-          </Pressable>
-        ))}
+              <Text style={styles.name} numberOfLines={1}>
+                {character.name}
+              </Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
-      <FullScreenImageViewer images={gallery} startIndex={viewerIndex} onClose={() => setViewerIndex(null)} />
+      <FullScreenImageViewer images={viewerImages} startIndex={selected === null ? null : 0} onClose={() => setSelected(null)} />
     </View>
   );
 }
@@ -94,6 +96,10 @@ function createStyles(theme: AppTheme) {
     },
     itemPressed: {
       opacity: 0.6,
+    },
+    avatarWrap: {
+      width: AVATAR_SIZE,
+      height: AVATAR_SIZE,
     },
     avatar: {
       width: AVATAR_SIZE,

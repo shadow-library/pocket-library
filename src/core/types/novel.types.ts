@@ -12,10 +12,17 @@
 
 // Paths are stored relative to the novel's private directory and resolved to `file://` uris at read
 // time, so the persisted index survives the app document directory moving between installs (iOS).
+// An alternate image of a character (a different outfit or scene). `label` names the outfit/scene.
+export type CharacterVariant = {
+  imagePath: string;
+  label?: string;
+};
+
 export type Character = {
   name: string;
   imagePath?: string;
   description?: string;
+  variants: CharacterVariant[];
 };
 
 export type Chapter = {
@@ -61,4 +68,7 @@ export type LibraryDoc = {
  * Declaring the constants
  */
 
-export const LIBRARY_SCHEMA_VERSION = 1;
+// Version of the persisted library index shape. Bump when the stored `Novel` shape changes; the read
+// path in `library.repository.ts` normalizes older docs forward, so a bump documents the change rather
+// than gating it. History: 1 = initial, 2 = `characters[].variants`.
+export const LIBRARY_SCHEMA_VERSION = 2;

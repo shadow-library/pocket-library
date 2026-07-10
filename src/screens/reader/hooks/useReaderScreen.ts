@@ -18,7 +18,7 @@ import { readingProgressService } from '@/core/services/reading-progress.service
 import { readingStatsService } from '@/core/services/reading-stats.service';
 import { readingColors, type ReaderFontFamily, type ReadingPalette, type ReadingTheme } from '@/core/theme';
 import type { Chapter } from '@/core/types/novel.types';
-import { parseMarkdown, partitionBlocks, scrollFraction, type ReaderBlock, type ReaderImageAsset } from '@/screens/reader/reader.helpers';
+import { parseMarkdown, partitionBlocks, scrollFraction, type ReaderBlock, type ReaderCharacterGallery, type ReaderImageAsset } from '@/screens/reader/reader.helpers';
 import { useVolumeChapterNav } from '@/screens/reader/hooks/useVolumeChapterNav';
 import { useAppSettingsStore } from '@/stores/use-app-settings-store';
 import { useLibraryStore } from '@/stores/use-library-store';
@@ -47,7 +47,7 @@ export type ReaderScreenModel = {
   textBlocks: ReaderBlock[];
   chapterImages: ReaderImageAsset[];
   galleryScenes: ReaderImageAsset[];
-  characterImages: ReaderImageAsset[];
+  characterGalleries: ReaderCharacterGallery[];
   chapters: Chapter[];
   currentIndex: number;
   isFirst: boolean;
@@ -162,12 +162,14 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
       .filter((scene) => scene.chapterPath === undefined || scene.chapterPath === chapterPath)
       .map((scene) => ({ uri: libraryService.assetUri(novel.id, scene.imagePath), label: scene.caption ?? '' }));
   }, [novel, chapterPath]);
-  // Character portraits belong to the whole novel, so the gallery shows them for every chapter.
-  const characterImages = useMemo<ReaderImageAsset[]>(() => {
+  // Character portraits belong to the whole novel, so the gallery shows them for every chapter. Each
+  // character carries its portrait + outfit/scene variants, browsed together in the swipe viewer.
+  const characterGalleries = useMemo<ReaderCharacterGallery[]>(() => {
     if (novel === null) return [];
     return novel.characters
-      .filter((character): character is typeof character & { imagePath: string } => character.imagePath !== undefined)
-      .map((character) => ({ uri: libraryService.assetUri(novel.id, character.imagePath), label: character.name }));
+      .map((character) => ({ name: character.name, images: libraryService.characterImages(novel.id, character) }))
+      .filter((entry) => entry.images.length > 0)
+      .map((entry) => ({ name: entry.name, avatarUri: entry.images[0].uri, images: entry.images }));
   }, [novel]);
 
   const commitSave = useCallback(() => saveProgress(id, { chapterIndex: safeIndex, scrollFraction: lastFraction.current, updatedAt: Date.now() }), [saveProgress, id, safeIndex]);
@@ -383,7 +385,7 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     textBlocks,
     chapterImages,
     galleryScenes,
-    characterImages,
+    characterGalleries,
     chapters,
     currentIndex: safeIndex,
     isFirst: safeIndex <= 0,

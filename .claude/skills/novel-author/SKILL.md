@@ -53,8 +53,27 @@ produces a quietly worse result rather than a visible one):
 - `author`, `description`, `tags` (string array).
 - `cover`: path to an image under `images/`, e.g. `images/cover.png`. Omit entirely if no image file
   exists — the app renders a clean initial-letter placeholder instead, which is expected and fine.
-- `characters`: array of `{ "name": string, "image"?: string, "description"?: string }`. Same
-  omit-if-no-file rule for `image`.
+- `characters`: array of `{ "name": string, "image"?: string, "description"?: string, "variants"?: [...] }`.
+  Same omit-if-no-file rule for `image`. `variants` is an optional array of alternate images of the
+  **same** character — different outfits or scenes — each `{ "image": string, "label"?: string }`, where
+  `image` is required (same omit-if-missing rule) and `label` is a short outfit/scene name (e.g.
+  `"Battle armor"`, `"Festival dress"`). The base `image` is the avatar shown in the character strip and
+  the first image in the viewer; if a character has no base `image` but has variants, its first variant
+  becomes the avatar. In the app, tapping a character swipes through its portrait + variants, each
+  captioned `"Name · label"`, and the avatar shows a `+N` badge for the extra images. Only add variants
+  when the user supplies the actual image files. Example:
+
+  ```json
+  {
+    "name": "Serena",
+    "image": "images/serena.png",
+    "description": "The sect's cold-eyed prodigy.",
+    "variants": [
+      { "image": "images/serena-armor.png", "label": "Battle armor" },
+      { "image": "images/serena-festival.png", "label": "Festival dress" }
+    ]
+  }
+  ```
 - `scenes`: array of `{ "image": string, "chapter"?: string, "caption"?: string }` — reference/concept
   art for a chapter. Distinct from `characters[].image` (a portrait). `image` is required and the same
   omit-if-no-file rule applies. `chapter` must equal one chapter's exact `file` value to tag the scene

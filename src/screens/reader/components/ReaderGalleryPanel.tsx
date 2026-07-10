@@ -9,9 +9,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
  * Importing user defined packages
  */
 import { FullScreenImageViewer } from '@/components/image-viewer';
+import { VariantCountBadge } from '@/components/variant-count-badge';
 import { content } from '@/core/content';
 import { spacing, type ReadingPalette } from '@/core/theme';
-import type { ReaderImageAsset } from '@/screens/reader/reader.helpers';
+import type { ReaderCharacterGallery, ReaderImageAsset } from '@/screens/reader/reader.helpers';
 
 /**
  * Defining types
@@ -19,16 +20,19 @@ import type { ReaderImageAsset } from '@/screens/reader/reader.helpers';
 
 type ReaderGalleryPanelProps = {
   palette: ReadingPalette;
-  characters: ReaderImageAsset[];
+  characters: ReaderCharacterGallery[];
   images: ReaderImageAsset[];
   scenes: ReaderImageAsset[];
 };
 
-type GallerySectionProps = {
-  heading: string;
-  assets: ReaderImageAsset[];
-  baseIndex: number;
-  onSelect: (index: number) => void;
+type OpenViewer = { images: ReaderImageAsset[]; startIndex: number };
+
+type GalleryThumbProps = {
+  uri: string;
+  label: string;
+  accessibilityLabel: string;
+  badgeCount: number;
+  onPress: () => void;
   styles: ReturnType<typeof createStyles>;
 };
 
@@ -38,17 +42,14 @@ type GallerySectionProps = {
 
 const THUMB_SIZE = 64;
 
-// The sheet's Gallery tab: round thumbnails with the current chapter's images first (inline images
-// plus scenes), followed by the novel's character portraits.
+// The sheet's Gallery tab. The current chapter's images (inline art + scenes) share one swipe set, while
+// each character opens its own set — its portrait plus any outfit/scene variants — with a "+N" badge.
 export function ReaderGalleryPanel({ palette, characters, images, scenes }: ReaderGalleryPanelProps) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const [viewer, setViewer] = useState<OpenViewer | null>(null);
   const styles = createStyles(palette);
   const chapterAssets = [...images, ...scenes];
-  // One combined gallery (chapter images first, then character portraits) so a swipe pages through
-  // every image in the tab regardless of which section the reader opened from.
-  const gallery = [...chapterAssets, ...characters];
 
-  if (gallery.length === 0) return <Text style={styles.empty}>{content.reader.gallery.empty}</Text>;
+  if (chapterAssets.length === 0 && characters.length === 0) return <Text style={styles.empty}>{content.reader.gallery.empty}</Text>;
 
   return (
     <View style={styles.container}>
@@ -56,37 +57,60 @@ export function ReaderGalleryPanel({ palette, characters, images, scenes }: Read
         <Text style={styles.title}>{content.reader.gallery.title}</Text>
         <Text style={styles.hint}>{content.reader.gallery.hint}</Text>
       </View>
-      {chapterAssets.length > 0 && <GallerySection heading={content.reader.gallery.thisChapter} assets={chapterAssets} baseIndex={0} onSelect={setSelected} styles={styles} />}
-      {characters.length > 0 && (
-        <GallerySection heading={content.reader.gallery.charactersHeading} assets={characters} baseIndex={chapterAssets.length} onSelect={setSelected} styles={styles} />
+      {chapterAssets.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{content.reader.gallery.thisChapter}</Text>
+          <View style={styles.grid}>
+            {chapterAssets.map((asset, index) => (
+              <GalleryThumb
+                key={`${asset.uri}-${index}`}
+                uri={asset.uri}
+                label={asset.label}
+                accessibilityLabel={asset.label.length > 0 ? asset.label : content.reader.gallery.thisChapter}
+                badgeCount={0}
+                onPress={() => setViewer({ images: chapterAssets, startIndex: index })}
+                styles={styles}
+              />
+            ))}
+          </View>
+        </View>
       )}
-      <FullScreenImageViewer images={gallery} startIndex={selected} onClose={() => setSelected(null)} />
+      {characters.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{content.reader.gallery.charactersHeading}</Text>
+          <View style={styles.grid}>
+            {characters.map((character, index) => (
+              <GalleryThumb
+                key={`${character.name}-${index}`}
+                uri={character.avatarUri}
+                label={character.name}
+                accessibilityLabel={character.name}
+                badgeCount={character.images.length - 1}
+                onPress={() => setViewer({ images: character.images, startIndex: 0 })}
+                styles={styles}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+      <FullScreenImageViewer images={viewer?.images ?? []} startIndex={viewer?.startIndex ?? null} onClose={() => setViewer(null)} />
     </View>
   );
 }
 
-function GallerySection({ heading, assets, baseIndex, onSelect, styles }: GallerySectionProps) {
+function GalleryThumb({ uri, label, accessibilityLabel, badgeCount, onPress, styles }: GalleryThumbProps) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{heading}</Text>
-      <View style={styles.grid}>
-        {assets.map((asset, index) => (
-          <Pressable
-            key={`${asset.uri}-${index}`}
-            accessibilityRole="button"
-            accessibilityLabel={asset.label.length > 0 ? asset.label : heading}
-            onPress={() => onSelect(baseIndex + index)}
-            style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
-            <Image source={{ uri: asset.uri }} style={styles.thumb} contentFit="cover" transition={150} />
-            {asset.label.length > 0 && (
-              <Text style={styles.itemLabel} numberOfLines={1}>
-                {asset.label}
-              </Text>
-            )}
-          </Pressable>
-        ))}
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [styles.item, pressed && styles.pressed]}>
+      <View style={styles.thumbWrap}>
+        <Image source={{ uri }} style={styles.thumb} contentFit="cover" transition={150} />
+        <VariantCountBadge count={badgeCount} />
       </View>
-    </View>
+      {label.length > 0 && (
+        <Text style={styles.itemLabel} numberOfLines={1}>
+          {label}
+        </Text>
+      )}
+    </Pressable>
   );
 }
 
@@ -136,6 +160,10 @@ function createStyles(palette: ReadingPalette) {
       width: THUMB_SIZE + spacing.sm,
       alignItems: 'center',
       gap: spacing.xs,
+    },
+    thumbWrap: {
+      width: THUMB_SIZE,
+      height: THUMB_SIZE,
     },
     thumb: {
       width: THUMB_SIZE,

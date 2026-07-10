@@ -32,7 +32,10 @@ Read `manifest.json` and check, in order:
      drops *every* chapter the import will fail with "no chapters."
 5. If present, `cover` and each `characters[].image` point at files that exist. A missing one isn't
    fatal (the app just falls back to a letter placeholder), but flag it — it's almost always a typo,
-   not intentional.
+   not intentional. Also check each `characters[].variants[].image` (a character's alternate
+   outfit/scene images): every variant `image` is a required non-empty string and must exist on disk —
+   a missing one is **silently dropped** from that character's image set, so flag it. A character with
+   no base `image` but with surviving variants is fine (its first variant becomes the avatar).
 6. If present, each `scenes[].image` points at a file that exists — same non-fatal-but-flag-it rule as
    `cover`/character images (a missing scene image is silently dropped from the novel entirely). For
    each `scenes[].chapter` that is set, confirm it exactly equals some `chapters[].file` value. A

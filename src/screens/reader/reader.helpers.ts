@@ -28,6 +28,10 @@ type ImageBlock = Extract<ReaderBlock, { type: 'image' }>;
 // A full-screen-viewable image for the current chapter: an extracted inline chapter image or a scene.
 export type ReaderImageAsset = { uri: string; label: string };
 
+// A character grouped with its portrait + outfit/scene variants for the reader gallery. `avatarUri` is
+// the thumbnail; `images` (portrait first) feeds the full-screen swipe viewer, each label pre-composed.
+export type ReaderCharacterGallery = { name: string; avatarUri: string; images: ReaderImageAsset[] };
+
 /**
  * Declaring the constants
  */

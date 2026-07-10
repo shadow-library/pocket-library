@@ -11,10 +11,18 @@
  */
 
 // Shape authored inside a `.novel` package's `manifest.json`. Paths are relative to the zip root.
+// An alternate image of a character — a different outfit or scene. `image` is required, `label` names
+// the outfit/scene.
+export type ManifestCharacterVariant = {
+  image: string;
+  label?: string;
+};
+
 export type ManifestCharacter = {
   name: string;
   image?: string;
   description?: string;
+  variants?: ManifestCharacterVariant[];
 };
 
 export type ManifestChapter = {

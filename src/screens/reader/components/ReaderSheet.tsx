@@ -15,7 +15,7 @@ import type { Chapter } from '@/core/types/novel.types';
 import { ReaderGalleryPanel } from '@/screens/reader/components/ReaderGalleryPanel';
 import { ReaderMenuPanel } from '@/screens/reader/components/ReaderMenuPanel';
 import { ReaderSettingsPanel } from '@/screens/reader/components/ReaderSettingsPanel';
-import type { ReaderImageAsset } from '@/screens/reader/reader.helpers';
+import type { ReaderCharacterGallery, ReaderImageAsset } from '@/screens/reader/reader.helpers';
 import type { ReaderTab } from '@/screens/reader/hooks/useReaderScreen';
 
 /**
@@ -43,7 +43,7 @@ type ReaderSheetProps = {
   novelTitle: string;
   coverUri: string | null;
   onAbout: () => void;
-  characters: ReaderImageAsset[];
+  characters: ReaderCharacterGallery[];
   images: ReaderImageAsset[];
   scenes: ReaderImageAsset[];
   fontScale: number;

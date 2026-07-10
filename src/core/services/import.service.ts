@@ -12,7 +12,7 @@ import { fileSystemService } from '@/core/infrastructure/file-system.service';
 import { utilityService } from '@/core/infrastructure/utility.service';
 import { libraryRepository } from '@/core/repositories/library.repository';
 import { novelAssetRepository } from '@/core/repositories/novel-asset.repository';
-import { MANIFEST_FILE_NAME, SUPPORTED_MANIFEST_VERSION, type NovelManifest } from '@/core/types/manifest.types';
+import { MANIFEST_FILE_NAME, SUPPORTED_MANIFEST_VERSION, type ManifestCharacterVariant, type NovelManifest } from '@/core/types/manifest.types';
 import { LIBRARY_SCHEMA_VERSION, type Chapter, type Character, type Novel, type Scene } from '@/core/types/novel.types';
 
 /**
@@ -87,6 +87,9 @@ class ImportService {
       name: character.name,
       description: character.description,
       imagePath: character.image !== undefined && this.assets.hasAsset(id, character.image) ? character.image : undefined,
+      variants: (character.variants ?? [])
+        .filter((variant) => this.assets.hasAsset(id, variant.image))
+        .map((variant) => ({ imagePath: variant.image, label: variant.label })),
     }));
     const scenes = this.installedScenes(id, manifest, chapters);
     return {
@@ -171,9 +174,20 @@ class ImportService {
         name: item.name,
         image: typeof item.image === 'string' ? item.image : undefined,
         description: typeof item.description === 'string' ? item.description : undefined,
+        variants: this.parseCharacterVariants(item.variants),
       });
     }
     return characters;
+  }
+
+  private parseCharacterVariants(value: unknown): ManifestCharacterVariant[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+    const variants: ManifestCharacterVariant[] = [];
+    for (const item of value) {
+      if (!this.utility.isRecord(item) || typeof item.image !== 'string' || item.image.length === 0) continue;
+      variants.push({ image: item.image, label: typeof item.label === 'string' ? item.label : undefined });
+    }
+    return variants;
   }
 
   private parseScenes(value: unknown): NovelManifest['scenes'] {
