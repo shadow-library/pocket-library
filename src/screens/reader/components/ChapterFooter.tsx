@@ -15,8 +15,6 @@ import type { ReadingPalette } from '@/core/theme';
 
 type ChapterFooterProps = {
   isLast: boolean;
-  nextTitle: string | null;
-  onNext: () => void;
   onBackToLibrary: () => void;
   palette: ReadingPalette;
 };
@@ -25,18 +23,15 @@ type ChapterFooterProps = {
  * Declaring the constants
  */
 
-export function ChapterFooter({ isLast, nextTitle, onNext, onBackToLibrary, palette }: ChapterFooterProps) {
+// Non-final chapters advance by pulling up past the end, so instead of a button they show a light hint;
+// only the last chapter shows the finished footer with a way back to the library.
+export function ChapterFooter({ isLast, onBackToLibrary, palette }: ChapterFooterProps) {
   const styles = createStyles(palette);
 
-  if (isLast) {
+  if (!isLast) {
     return (
-      <View style={styles.container}>
-        <View style={styles.divider} />
-        <Text style={styles.finishedTitle}>{content.reader.finishedTitle}</Text>
-        <Text style={styles.finishedBody}>{content.reader.finishedBody}</Text>
-        <Pressable accessibilityRole="button" onPress={onBackToLibrary} style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-          <Text style={styles.buttonLabel}>{content.reader.backToLibrary}</Text>
-        </Pressable>
+      <View style={styles.hintContainer}>
+        <Text style={styles.hint}>{content.reader.pull.hint}</Text>
       </View>
     );
   }
@@ -44,13 +39,10 @@ export function ChapterFooter({ isLast, nextTitle, onNext, onBackToLibrary, pale
   return (
     <View style={styles.container}>
       <View style={styles.divider} />
-      <Pressable accessibilityRole="button" onPress={onNext} style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-        <Text style={styles.buttonLabel}>{content.reader.nextChapter}</Text>
-        {nextTitle !== null && (
-          <Text style={styles.nextTitle} numberOfLines={1}>
-            {nextTitle}
-          </Text>
-        )}
+      <Text style={styles.finishedTitle}>{content.reader.finishedTitle}</Text>
+      <Text style={styles.finishedBody}>{content.reader.finishedBody}</Text>
+      <Pressable accessibilityRole="button" onPress={onBackToLibrary} style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
+        <Text style={styles.buttonLabel}>{content.reader.backToLibrary}</Text>
       </Pressable>
     </View>
   );
@@ -62,6 +54,16 @@ function createStyles(palette: ReadingPalette) {
       gap: 16,
       alignItems: 'center',
       paddingTop: 24,
+    },
+    hintContainer: {
+      alignItems: 'center',
+      paddingTop: 32,
+    },
+    hint: {
+      fontFamily: 'Inter_400Regular',
+      fontSize: 13,
+      color: palette.pct,
+      textAlign: 'center',
     },
     divider: {
       height: StyleSheet.hairlineWidth,
@@ -87,10 +89,6 @@ function createStyles(palette: ReadingPalette) {
       fontSize: 16,
       fontWeight: '600',
       color: palette.link,
-    },
-    nextTitle: {
-      fontSize: 13,
-      color: palette.textSecondary,
     },
     finishedTitle: {
       fontSize: 20,

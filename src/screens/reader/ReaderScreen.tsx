@@ -13,6 +13,7 @@ import { content } from '@/core/content';
 import type { ReadingPalette } from '@/core/theme';
 import { ChapterFooter } from '@/screens/reader/components/ChapterFooter';
 import { MarkdownContent } from '@/screens/reader/components/MarkdownContent';
+import { PullIndicator } from '@/screens/reader/components/PullIndicator';
 import { ReaderSheet } from '@/screens/reader/components/ReaderSheet';
 import { useReaderScreen } from '@/screens/reader/hooks/useReaderScreen';
 
@@ -23,6 +24,9 @@ import { useReaderScreen } from '@/screens/reader/hooks/useReaderScreen';
 /**
  * Declaring the constants
  */
+
+// Empty space kept below the last line so the reader can comfortably pull up to advance a chapter.
+const PULL_BUFFER = 200;
 
 export function ReaderScreen() {
   const scrollRef = useRef<ScrollView | null>(null);
@@ -40,31 +44,27 @@ export function ReaderScreen() {
   return (
     <View style={styles.page}>
       <StatusBar style={model.theme === 'dark' ? 'light' : 'dark'} />
-      <Animated.View style={[styles.slide, { transform: [{ translateY: model.slideY }] }]}>
-        <ScrollView
-          ref={scrollRef}
-          onScroll={model.onScroll}
-          onScrollBeginDrag={model.onScrollBeginDrag}
-          onScrollEndDrag={model.onScrollEndDrag}
-          scrollEventThrottle={16}
-          onContentSizeChange={model.onContentSizeChange}
-          onLayout={model.onLayout}
-          contentContainerStyle={styles.content}>
-          <GestureDetector gesture={model.contentGesture}>
-            <View>
-              <MarkdownContent blocks={model.textBlocks} palette={model.palette} fontScale={model.fontScale} fontFamily={model.fontFamily} />
-              <ChapterFooter isLast={model.isLast} nextTitle={model.nextTitle} onNext={model.goToNextChapter} onBackToLibrary={model.goToLibrary} palette={model.palette} />
-            </View>
-          </GestureDetector>
-        </ScrollView>
+      <Animated.View style={[styles.slide, { transform: [{ translateY: model.slideY }, { translateY: model.pullY }] }]}>
+        <GestureDetector gesture={model.scrollGesture}>
+          <ScrollView
+            ref={scrollRef}
+            onScroll={model.onScroll}
+            scrollEventThrottle={16}
+            overScrollMode="never"
+            onContentSizeChange={model.onContentSizeChange}
+            onLayout={model.onLayout}
+            contentContainerStyle={styles.content}>
+            <GestureDetector gesture={model.contentGesture}>
+              <View>
+                <MarkdownContent blocks={model.textBlocks} palette={model.palette} fontScale={model.fontScale} fontFamily={model.fontFamily} />
+                <ChapterFooter isLast={model.isLast} onBackToLibrary={model.goToLibrary} palette={model.palette} />
+              </View>
+            </GestureDetector>
+          </ScrollView>
+        </GestureDetector>
       </Animated.View>
       <View style={styles.topInsetCover} pointerEvents="none" />
-      <View style={styles.progressBar} pointerEvents="none">
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${model.progressPercent}%` }]} />
-        </View>
-        <Text style={styles.progressPct}>{model.progressPercent}%</Text>
-      </View>
+      <PullIndicator dir={model.pullDir} armed={model.pullArmed} pull={model.pullY} palette={model.palette} topInset={model.topInset} bottomInset={model.bottomInset} />
       <ReaderSheet
         visible={model.optionsVisible}
         title={model.chapterTitle}
@@ -122,36 +122,8 @@ function createStyles(palette: ReadingPalette, topInset: number, bottomInset: nu
     content: {
       paddingHorizontal: 24,
       paddingTop: topInset + 16,
-      paddingBottom: bottomInset + 64,
+      paddingBottom: bottomInset + PULL_BUFFER,
       gap: 16,
-    },
-    progressBar: {
-      position: 'absolute',
-      left: 24,
-      right: 24,
-      bottom: bottomInset + 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    progressTrack: {
-      flex: 1,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: palette.progressTrack,
-      overflow: 'hidden',
-    },
-    progressFill: {
-      height: '100%',
-      borderRadius: 999,
-      backgroundColor: palette.progressFill,
-    },
-    progressPct: {
-      fontFamily: 'Inter_400Regular',
-      fontSize: 12,
-      color: palette.pct,
-      minWidth: 30,
-      textAlign: 'right',
     },
     notFound: {
       flex: 1,

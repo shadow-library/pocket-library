@@ -6,7 +6,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, ScrollView, useWindowDimensions } from 'react-native';
-import { Gesture } from 'react-native-gesture-handler';
+import { Gesture, type GestureUpdateEvent, type PanGestureHandlerEventPayload } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
@@ -19,6 +19,7 @@ import { readingStatsService } from '@/core/services/reading-stats.service';
 import { readingColors, type ReaderFontFamily, type ReadingPalette, type ReadingTheme } from '@/core/theme';
 import type { Chapter } from '@/core/types/novel.types';
 import { parseMarkdown, partitionBlocks, scrollFraction, type ReaderBlock, type ReaderImageAsset } from '@/screens/reader/reader.helpers';
+import { useVolumeChapterNav } from '@/screens/reader/hooks/useVolumeChapterNav';
 import { useAppSettingsStore } from '@/stores/use-app-settings-store';
 import { useLibraryStore } from '@/stores/use-library-store';
 import { useReaderSettingsStore } from '@/stores/use-reader-settings-store';
@@ -29,7 +30,12 @@ import { useReaderSettingsStore } from '@/stores/use-reader-settings-store';
 
 export type ReaderTab = 'contents' | 'display' | 'gallery';
 
+// -1 pulls down at the top toward the previous chapter, 1 pulls up at the end toward the next, 0 idle.
+export type PullDirection = -1 | 0 | 1;
+
 type PendingSlide = { direction: -1 | 0 | 1; toIndex: number };
+
+type PullEngage = { dir: -1 | 1; base: number; armed: boolean };
 
 export type ReaderScreenModel = {
   status: 'ready' | 'notFound';
@@ -46,13 +52,10 @@ export type ReaderScreenModel = {
   currentIndex: number;
   isFirst: boolean;
   isLast: boolean;
-  nextTitle: string | null;
   topInset: number;
   bottomInset: number;
   progressPercent: number;
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
-  onScrollBeginDrag: () => void;
-  onScrollEndDrag: () => void;
   onContentSizeChange: (width: number, height: number) => void;
   onLayout: (event: LayoutChangeEvent) => void;
   goToPrevChapter: () => void;
@@ -62,6 +65,9 @@ export type ReaderScreenModel = {
   goToLibrary: () => void;
   openAbout: () => void;
   slideY: Animated.Value;
+  pullY: Animated.Value;
+  pullDir: PullDirection;
+  pullArmed: boolean;
   palette: ReadingPalette;
   fontScale: number;
   fontFamily: ReaderFontFamily;
@@ -70,6 +76,7 @@ export type ReaderScreenModel = {
   setBrightness: (brightness: number) => void;
   optionsVisible: boolean;
   contentGesture: ReturnType<typeof Gesture.Race>;
+  scrollGesture: ReturnType<typeof Gesture.Native>;
   closeOptions: () => void;
   activeTab: ReaderTab;
   setActiveTab: (tab: ReaderTab) => void;
@@ -87,7 +94,15 @@ const END_OF_CHAPTER_FRACTION = 0.995;
 const START_OF_CHAPTER_FRACTION = 0.005;
 const SLIDE_DURATION_MS = 280;
 const TAP_MAX_DISTANCE = 16;
-const PULL_DISTANCE = 80;
+// React Native dp are defined at 160 per inch, so a centimetre is ~63 dp regardless of device.
+const DP_PER_CM = 160 / 2.54;
+// Vertical travel before the pan activates and the engage slop before a pull is recognised.
+const PULL_ACTIVATE = 12;
+const PULL_ENGAGE_SLOP = 8;
+// Pull the page ~2 cm past an edge and release to turn the chapter; anything shorter springs back.
+// The page follows the finger 1:1 up to the threshold, then stiffens so crossing it is felt.
+const PULL_THRESHOLD = 2 * DP_PER_CM;
+const PULL_OVERPULL_RESISTANCE = 0.4;
 const NO_SLIDE: PendingSlide = { direction: 0, toIndex: -1 };
 
 export function useReaderScreen(scrollView: RefObject<ScrollView | null>): ReaderScreenModel {
@@ -111,6 +126,9 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
   const [progressPercent, setProgressPercent] = useState(0);
   const [systemBrightness, setSystemBrightness] = useState(0.5);
   const [slideY] = useState(() => new Animated.Value(0));
+  const [pullY] = useState(() => new Animated.Value(0));
+  const [pullDir, setPullDir] = useState<PullDirection>(0);
+  const [pullArmed, setPullArmed] = useState(false);
   const [scrollable, setScrollable] = useState(false);
   const [pendingSlide, setPendingSlide] = useState<PendingSlide>(NO_SLIDE);
   const { height: windowHeight } = useWindowDimensions();
@@ -122,8 +140,11 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
   const lastFraction = useRef(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sessionStart = useRef(0);
-  const dragStartedAtEnd = useRef(false);
-  const dragStartedAtStart = useRef(false);
+  const pullEngage = useRef<PullEngage | null>(null);
+  // Edge flags live in refs so the pull gesture can read the latest value without rebuilding — a
+  // rebuild mid-drag would reset the in-progress pan and break scroll-then-pull in one motion.
+  const atTopRef = useRef(true);
+  const atBottomRef = useRef(false);
 
   const chapters = useMemo(() => novel?.chapters ?? [], [novel]);
   const safeIndex = clampIndex(Number(chapter ?? 0), chapters.length);
@@ -168,6 +189,8 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     restored.current = false;
     sessionStart.current = Date.now();
     setProgressPercent(bookPercent(safeIndex, pendingFraction.current, total));
+    atTopRef.current = pendingFraction.current <= START_OF_CHAPTER_FRACTION;
+    atBottomRef.current = pendingFraction.current >= END_OF_CHAPTER_FRACTION;
     scrollView.current?.scrollTo({ y: 0, animated: false });
     saveProgress(id, { chapterIndex: safeIndex, scrollFraction: pendingFraction.current, updatedAt: Date.now() });
     return () => {
@@ -209,19 +232,13 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
         const next = bookPercent(safeIndex, fraction, total);
         return prev === next ? prev : next;
       });
+      atTopRef.current = fraction <= START_OF_CHAPTER_FRACTION;
+      atBottomRef.current = fraction >= END_OF_CHAPTER_FRACTION;
       if (saveTimer.current !== null) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(commitSave, SAVE_DEBOUNCE_MS);
     },
     [commitSave, safeIndex, total],
   );
-
-  // Pulling up while already at the chapter's end advances to the next chapter, and pulling down at
-  // the very start goes back to the previous one. The drag must both start and finish at that edge,
-  // so a normal scroll that merely reaches an edge never triggers a chapter change.
-  const onScrollBeginDrag = useCallback(() => {
-    dragStartedAtEnd.current = restored.current && lastFraction.current >= END_OF_CHAPTER_FRACTION;
-    dragStartedAtStart.current = restored.current && lastFraction.current <= START_OF_CHAPTER_FRACTION;
-  }, []);
 
   const onContentSizeChange = useCallback(
     (_width: number, height: number) => {
@@ -252,13 +269,6 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     setPendingSlide({ direction: -1, toIndex: safeIndex - 1 });
     router.setParams({ chapter: String(safeIndex - 1) });
   }, [router, safeIndex]);
-
-  const onScrollEndDrag = useCallback(() => {
-    if (dragStartedAtEnd.current && lastFraction.current >= END_OF_CHAPTER_FRACTION) goToNextChapter();
-    else if (dragStartedAtStart.current && lastFraction.current <= START_OF_CHAPTER_FRACTION) goToPrevChapter();
-    dragStartedAtEnd.current = false;
-    dragStartedAtStart.current = false;
-  }, [goToNextChapter, goToPrevChapter]);
 
   // The incoming chapter slides in from the edge it was pulled from: from below when advancing, from
   // above when going back. A layout effect positions it off-screen before the frame paints; matching
@@ -293,20 +303,75 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     router.push({ pathname: '/novel/[id]', params: { id } });
   }, [router, id]);
   // A gesture-handler tap (not a Pressable) so the chapter body is not marked an Android "clickable"
-  // node — that would collapse every paragraph into one accessibility announcement. When a chapter
-  // fits on one screen the ScrollView never sees drags, so a pan stands in for the edge pulls there;
-  // on scrollable chapters it stays disabled and the scroll drag handlers own pull detection.
+  // node — that would collapse every paragraph into one accessibility announcement. The pull runs
+  // simultaneously with the scroll (via the native scroll gesture) so it never blocks scrolling; it
+  // only engages once the finger drags past an edge, then the page rubber-bands and arms past the
+  // threshold.
+  const scrollGesture = useMemo(() => Gesture.Native(), []);
+  // The pull engagement is per-gesture mutable state held in a ref. RNGH invokes these callbacks from
+  // the native gesture stream, never during React render, so reading the ref inside them is safe — but
+  // the React Compiler lint rule cannot see that deferral, hence the scoped disable.
+  /* eslint-disable react-hooks/refs -- gesture callbacks run outside render; ref access here is safe */
   const contentGesture = useMemo(() => {
+    const finishPull = () => {
+      const settled = pullEngage.current;
+      pullEngage.current = null;
+      setPullDir(0);
+      setPullArmed(false);
+      if (settled !== null && settled.armed) {
+        pullY.setValue(0);
+        if (settled.dir === 1) goToNextChapter();
+        else goToPrevChapter();
+        return;
+      }
+      Animated.spring(pullY, { toValue: 0, useNativeDriver: true, bounciness: 6, speed: 16 }).start();
+    };
+
+    const onUpdate = (event: GestureUpdateEvent<PanGestureHandlerEventPayload>) => {
+      const dy = event.translationY;
+      let active = pullEngage.current;
+      if (active === null) {
+        if (dy > PULL_ENGAGE_SLOP && (!scrollable || atTopRef.current) && safeIndex > 0) active = { dir: -1, base: dy, armed: false };
+        else if (dy < -PULL_ENGAGE_SLOP && (!scrollable || atBottomRef.current) && safeIndex < total - 1) active = { dir: 1, base: dy, armed: false };
+        else return;
+      }
+      // Distance is measured from where the pull first engaged, so it starts at zero on that frame;
+      // only a finger that travels back past the engage point (negative) disengages.
+      const distance = active.dir === -1 ? dy - active.base : active.base - dy;
+      if (distance < 0) {
+        pullEngage.current = null;
+        pullY.setValue(0);
+        setPullDir(0);
+        setPullArmed(false);
+        return;
+      }
+      active.armed = distance >= PULL_THRESHOLD;
+      pullEngage.current = active;
+      pullY.setValue(active.dir === 1 ? -pullTranslate(distance) : pullTranslate(distance));
+      setPullDir(active.dir);
+      setPullArmed(active.armed);
+    };
+
     const tap = Gesture.Tap().runOnJS(true).maxDistance(TAP_MAX_DISTANCE).onEnd(() => setOptionsVisible((visible) => !visible));
-    const pull = Gesture.Pan().enabled(!scrollable).runOnJS(true).onEnd((event) => {
-      if (event.translationY > PULL_DISTANCE) goToPrevChapter();
-      else if (event.translationY < -PULL_DISTANCE) goToNextChapter();
-    });
+    const pull = Gesture.Pan()
+      .runOnJS(true)
+      .activeOffsetY([-PULL_ACTIVATE, PULL_ACTIVATE])
+      .simultaneousWithExternalGesture(scrollGesture)
+      .onBegin(() => {
+        pullEngage.current = null;
+      })
+      .onUpdate(onUpdate)
+      .onEnd(finishPull)
+      .onFinalize(() => {
+        if (pullEngage.current !== null) finishPull();
+      });
     return Gesture.Race(pull, tap);
-  }, [scrollable, goToPrevChapter, goToNextChapter]);
+  }, [scrollGesture, scrollable, safeIndex, total, pullY, goToNextChapter, goToPrevChapter]);
+  /* eslint-enable react-hooks/refs */
   const closeOptions = useCallback(() => setOptionsVisible(false), []);
 
   const ready = novel !== null && activeChapter !== null;
+  useVolumeChapterNav(ready, goToNextChapter, goToPrevChapter);
 
   return {
     status: ready ? 'ready' : 'notFound',
@@ -323,13 +388,10 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     currentIndex: safeIndex,
     isFirst: safeIndex <= 0,
     isLast: !ready || safeIndex >= chapters.length - 1,
-    nextTitle: chapters[safeIndex + 1]?.title ?? null,
     topInset: insets.top,
     bottomInset: insets.bottom,
     progressPercent,
     onScroll,
-    onScrollBeginDrag,
-    onScrollEndDrag,
     onContentSizeChange,
     onLayout,
     goToPrevChapter,
@@ -339,6 +401,9 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     goToLibrary,
     openAbout,
     slideY,
+    pullY,
+    pullDir,
+    pullArmed,
     palette: readingColors[theme],
     fontScale,
     fontFamily,
@@ -347,6 +412,7 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
     setBrightness,
     optionsVisible,
     contentGesture,
+    scrollGesture,
     closeOptions,
     activeTab,
     setActiveTab,
@@ -358,6 +424,13 @@ export function useReaderScreen(scrollView: RefObject<ScrollView | null>): Reade
 
 function bookPercent(chapterIndex: number, fraction: number, total: number): number {
   return Math.round(((chapterIndex + fraction) / Math.max(1, total)) * 100);
+}
+
+// Rubber-band curve: the page tracks the finger 1:1 up to the turn threshold, then follows with heavy
+// resistance so an overpull past the threshold is felt without yanking the whole chapter off screen.
+function pullTranslate(distance: number): number {
+  if (distance <= PULL_THRESHOLD) return distance;
+  return PULL_THRESHOLD + (distance - PULL_THRESHOLD) * PULL_OVERPULL_RESISTANCE;
 }
 
 function clampIndex(value: number, length: number): number {
