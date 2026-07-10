@@ -34,10 +34,24 @@ Use Bun for all project commands.
 - Trigger cloud builds with `bun run build:development`, `bun run build:preview`, or
   `bun run build:production` (wraps `eas build`, profiles defined in `eas.json`). The project is
   linked to EAS project `093b574e-0bca-4942-b87d-d93de73188c3` (`@shadow-apps/pocket-library`) via
-  `extra.eas.projectId` and `owner` in `app.json` — never change those without the user's explicit
-  instruction, since they determine which cloud account/project builds are billed to and delivered
-  under. Triggering a build queues a real, potentially billed cloud job; confirm with the user before
-  running one, and let them choose the profile if unspecified.
+  `extra.eas.projectId` and `owner` in `app.config.ts` — never change those without the user's
+  explicit instruction, since they determine which cloud account/project builds are billed to and
+  delivered under. Triggering a build queues a real, potentially billed cloud job; confirm with the
+  user before running one, and let them choose the profile if unspecified.
+- Build and side-load a production build onto a connected Android device with
+  `bun run build:production:install`. It builds locally (no cloud queue) with the `production-apk`
+  profile — same signing/versioning as `production`, but packaged as an installable `.apk` instead of
+  the store's `.app-bundle` — then runs `adb install -r` against whatever device `adb` currently sees.
+  Requires exactly one connected/authorized device or emulator; the local build itself is real CPU
+  work (several minutes), so confirm with the user before running it, same as any other build trigger.
+  A device that already has a `development`/`preview` build installed must be uninstalled first
+  (`adb uninstall com.shadowapps.pocketlibrary`) — Android blocks installing over a package whose
+  existing signature doesn't match, and dev/preview/production builds are signed differently.
+- App identity/config lives in `app.config.ts`, not `app.json` (there is no `app.json` in this repo).
+  `name` is computed from `EAS_BUILD_PROFILE`, which EAS sets automatically during a build: `Pocket
+  Library Dev` for `development`, `Pocket Library Preview` for `preview`, plain `Pocket Library` for
+  everything else (`production`, `production-apk`, and local `expo start`/`expo run:*` where the
+  variable is unset). Add new profile names to `APP_NAME_BY_PROFILE` there if you add more.
 
 Do not use `npm`, `npx`, `yarn`, or `pnpm` unless the user explicitly asks for them.
 

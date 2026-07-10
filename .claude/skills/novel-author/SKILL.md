@@ -56,13 +56,14 @@ produces a quietly worse result rather than a visible one):
 - `characters`: array of `{ "name": string, "image"?: string, "description"?: string }`. Same
   omit-if-no-file rule for `image`.
 - `scenes`: array of `{ "image": string, "chapter"?: string, "caption"?: string }` — reference/concept
-  art for a chapter. Distinct from `characters[].image` (a portrait) and from an inline
-  `![alt](path)` image embedded in a chapter's Markdown (part of the running text). `image` is
-  required and same omit-if-no-file rule applies. `chapter` must equal one chapter's exact `file`
-  value to tag the scene to that chapter only — get this exact or the tag is silently ignored and the
-  scene falls back to showing under every chapter. Leave `chapter` out on purpose for art that isn't
-  chapter-specific (e.g. a map, a cast portrait) — it will then show under every chapter's scene
-  gallery in the reader. `caption` is optional short text shown under the image.
+  art for a chapter. Distinct from `characters[].image` (a portrait). `image` is required and the same
+  omit-if-no-file rule applies. `chapter` must equal one chapter's exact `file` value to tag the scene
+  to that chapter only — get this exact or the tag is silently ignored and the scene falls back to
+  being treated as untagged (shown for every chapter). Leave `chapter` out on purpose for art that
+  isn't chapter-specific (e.g. a map, a cast portrait). `caption` is optional short text for the image.
+  Scenes surface in the reader's per-chapter gallery (the Gallery tab of the tap-up sheet) alongside any
+  inline `![alt](path)` images from that chapter — inline images are pulled out of the running text
+  into the same gallery, so use inline images and scenes interchangeably for chapter artwork.
 
 Use `sample/the-rain-road/manifest.json` as a concrete reference if you want to see a filled-in
 example, including a tagged `scenes` entry.

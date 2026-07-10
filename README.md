@@ -8,13 +8,16 @@ network access — everything works on-device after import.
 
 ## Features
 
-- **Local library** — every imported novel in one place, with a "Continue reading" shortcut.
-- **Novel details** — cover, author, description, characters, and a chapter list.
-- **Focused reader** — Markdown chapters (with inline images), scrollable, with a natural
-  "Next chapter" hand-off at the end of each chapter.
-- **Comfortable reading** — adjustable font size and light / dark / sepia reading themes.
-- **Tap to view assets** — tap the page while reading to reveal character portraits and this
-  chapter's scene art as thumbnails; tap one to view it full-screen.
+- **Local library** — every imported novel in one place, sorted by most recently opened.
+- **Novel details** — cover, author, tags, an expandable synopsis, a chapter list, and clickable
+  cover + character portraits (tap any image to view it full-screen).
+- **Focused reader** — immersive Markdown chapters with no chrome until you tap; a tap slides up a
+  bottom sheet with a chapter scrubber and a bottom icon bar that switches between three tabs —
+  Contents, Display, and Gallery — plus a natural "Next chapter" hand-off at the end of each chapter.
+- **Chapter gallery** — the sheet's Gallery tab shows the novel's character portraits plus the
+  chapter's own images and scene art; tap any thumbnail to view it full-screen.
+- **Comfortable reading** — adjustable font size, a choice of reading fonts, and light / dark /
+  sepia reading themes.
 - **Remembers your place** — the last novel, chapter, and scroll position are restored on relaunch.
 - **Private by design** — imported chapters, covers, and images live only in the app's private
   document directory. They never appear in the gallery, Photos, Downloads, or any public media
@@ -89,7 +92,8 @@ Markdown are relative to that chapter file (e.g. `![alt](../images/rain.png)`).
 | `scenes`        | no       | Reference/concept art — not a character portrait, not an inline chapter image. See below. |
 
 Chapters are Markdown and support headings, **bold**, *italic*, blockquotes, ordered/unordered
-lists, horizontal rules, and images.
+lists, and horizontal rules. Inline images (`![alt](path)`) are supported but do **not** render in
+the reading flow — they are collected into the chapter gallery instead (see below).
 
 #### `scenes`
 
@@ -100,10 +104,12 @@ Each entry is `{ "image": string, "chapter"?: string, "caption"?: string }`:
   chapter only. Omit it and the scene shows up under **every** chapter instead.
 - `caption` (optional) — short text shown under the image.
 
-Tapping anywhere on the chapter page (while reading) reveals a thumbnail bar of that chapter's
-characters and scenes; tapping a thumbnail opens it full-screen, and tapping the full-screen image
-returns to the chapter. Scenes are distinct from images you embed directly in a chapter's Markdown
-(`![alt](path)`), which render inline as part of the chapter text.
+While reading, tapping the page slides up the reader sheet; its **Gallery** tab shows the novel's
+character portraits plus the current chapter's inline images and scenes as thumbnails, each opening
+full-screen on tap. Inline chapter images
+(`![alt](path)`, resolved relative to the chapter file) and scenes therefore share the same gallery —
+scenes are novel-level reference art tagged to chapters, inline images are authored into a chapter's
+Markdown. Neither appears in the running chapter text.
 
 ## Building a package
 

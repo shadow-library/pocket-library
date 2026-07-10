@@ -46,9 +46,12 @@ Read `manifest.json` and check, in order:
    import.
 8. For each `![alt](path)` inline image in a chapter, resolve it relative to that chapter's own
    location and confirm the target file exists (the reader does the same relative resolution at read
-   time; a broken path just renders nothing). These are separate from `scenes[].image` — inline images
-   render as part of the chapter text; scenes (and character portraits) surface in a tap-to-reveal
-   thumbnail bar in the reader, opening full-screen on tap.
+   time; a broken path just renders nothing). Inline images do **not** appear in the running chapter
+   text — the reader pulls them out into that chapter's gallery (the Gallery tab of the tap-up sheet),
+   alongside any `scenes[]` tagged to the chapter. So both inline images and scenes surface as
+   full-screen-viewable gallery thumbnails; the difference is authoring intent (inline images live in
+   a chapter's Markdown, scenes are novel-level art tagged to chapters). Character portraits also show
+   in the Gallery tab (for every chapter) and are clickable full-screen from the novel details page.
 
 Report all findings together. If anything in 1–4 is a blocking error, stop and ask before packaging.
 Non-blocking findings (5–8) are warnings — mention them, then proceed unless the user wants to fix
