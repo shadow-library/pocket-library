@@ -3,8 +3,13 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/lora": "^0.4.2",
+    "@expo-google-fonts/roboto": "^0.4.3",
     "@expo/ui": "~57.0.3",
+    "@expo/vector-icons": "^15.0.2",
     "expo": "~57.0.2",
+    "expo-brightness": "~57.0.0",
     "expo-constants": "~57.0.3",
     "expo-dev-client": "^57.0.5",
     "expo-device": "~57.0.0",
@@ -13,6 +18,7 @@
     "expo-font": "~57.0.0",
     "expo-glass-effect": "~57.0.0",
     "expo-image": "~57.0.0",
+    "expo-linear-gradient": "~57.0.0",
     "expo-linking": "~57.0.1",
     "expo-router": "~57.0.3",
     "expo-splash-screen": "~57.0.2",
@@ -51,9 +57,10 @@
     "typecheck": "tsc --noEmit",
     "make:novel": "node scripts/make-novel.mjs",
     "make:sample": "node scripts/make-novel.mjs sample/the-rain-road",
-    "build:development": "eas build --profile development --platform all",
-    "build:preview": "eas build --profile preview --platform all",
-    "build:production": "eas build --profile production --platform all"
+    "build:development": "eas build --profile development --platform android",
+    "build:preview": "eas build --profile preview --platform android",
+    "build:production": "eas build --profile production --platform android",
+    "build:production:install": "eas build --profile production-apk --platform android --local --non-interactive --output build/pocket-library-production.apk && adb install -r build/pocket-library-production.apk"
   },
   "private": true
 }

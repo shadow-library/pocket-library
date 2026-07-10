@@ -44,3 +44,6 @@ example
 
 # generated novel packages (build output of scripts/make-novel.mjs)
 *.novel
+
+# local eas build output (build:production:install)
+/build
