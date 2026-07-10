@@ -7,8 +7,7 @@ import { StyleSheet, Text, View } from 'react-native';
 /**
  * Importing user defined packages
  */
-import type { ReadingPalette } from '@/core/theme';
-import { ReaderImage } from '@/screens/reader/components/ReaderImage';
+import { readerFontStacks, readingFonts, readingType, type ReaderFontFamily, type ReadingPalette } from '@/core/theme';
 import type { InlineNode, ReaderBlock } from '@/screens/reader/reader.helpers';
 
 /**
@@ -17,18 +16,19 @@ import type { InlineNode, ReaderBlock } from '@/screens/reader/reader.helpers';
 
 type MarkdownContentProps = {
   blocks: ReaderBlock[];
-  novelId: string;
-  chapterPath: string;
   palette: ReadingPalette;
   fontScale: number;
+  fontFamily: ReaderFontFamily;
 };
 
 /**
  * Declaring the constants
  */
 
-export function MarkdownContent({ blocks, novelId, chapterPath, palette, fontScale }: MarkdownContentProps) {
-  const styles = createStyles(palette, fontScale);
+// Inline images are stripped upstream (they surface in the chapter gallery), so the body renders text
+// blocks only. Chapter headings use the Lora serif; body paragraphs share one uniform reading font.
+export function MarkdownContent({ blocks, palette, fontScale, fontFamily }: MarkdownContentProps) {
+  const styles = createStyles(palette, fontScale, fontFamily);
 
   const renderInline = (nodes: InlineNode[]) =>
     nodes.map((node, index) => {
@@ -71,8 +71,6 @@ export function MarkdownContent({ blocks, novelId, chapterPath, palette, fontSca
             ))}
           </View>
         );
-      case 'image':
-        return <ReaderImage key={key} novelId={novelId} chapterPath={chapterPath} src={block.src} alt={block.alt} palette={palette} />;
       case 'hr':
         return <View key={key} style={styles.hr} />;
       default:
@@ -89,34 +87,37 @@ function headingStyle(styles: ReturnType<typeof createStyles>, level: number) {
   return styles.h3;
 }
 
-function createStyles(palette: ReadingPalette, fontScale: number) {
-  const body = 18 * fontScale;
-  const bodyLine = 29 * fontScale;
+function createStyles(palette: ReadingPalette, fontScale: number, fontFamily: ReaderFontFamily) {
+  const body = readingType.bodySize * fontScale;
+  const bodyLine = readingType.bodySize * readingType.bodyLineRatio * fontScale;
+  const stack = readerFontStacks[fontFamily];
   return StyleSheet.create({
     paragraph: {
+      fontFamily: stack.regular,
       fontSize: body,
       lineHeight: bodyLine,
       color: palette.text,
-      textAlign: 'justify',
+      marginBottom: 16 * fontScale,
     },
     heading: {
-      color: palette.text,
-      fontWeight: '700',
+      fontFamily: readingFonts.serifTitle,
+      color: palette.heading,
     },
     h1: {
-      fontSize: 27 * fontScale,
-      lineHeight: 34 * fontScale,
+      fontSize: readingType.titleSize * fontScale,
+      lineHeight: readingType.titleLine * fontScale,
+      marginBottom: 8 * fontScale,
     },
     h2: {
-      fontSize: 23 * fontScale,
-      lineHeight: 30 * fontScale,
+      fontSize: 22 * fontScale,
+      lineHeight: 28 * fontScale,
     },
     h3: {
-      fontSize: 20 * fontScale,
-      lineHeight: 27 * fontScale,
+      fontSize: 19 * fontScale,
+      lineHeight: 26 * fontScale,
     },
     bold: {
-      fontWeight: '700',
+      fontFamily: stack.bold,
     },
     italic: {
       fontStyle: 'italic',
@@ -130,21 +131,25 @@ function createStyles(palette: ReadingPalette, fontScale: number) {
       paddingLeft: 16,
       borderLeftWidth: 3,
       borderLeftColor: palette.border,
+      marginBottom: 16 * fontScale,
     },
     list: {
       gap: 8 * fontScale,
+      marginBottom: 16 * fontScale,
     },
     listItem: {
       flexDirection: 'row',
       gap: 10,
     },
     bullet: {
+      fontFamily: stack.regular,
       fontSize: body,
       lineHeight: bodyLine,
       color: palette.textSecondary,
       minWidth: 22,
     },
     listText: {
+      fontFamily: stack.regular,
       flex: 1,
       fontSize: body,
       lineHeight: bodyLine,

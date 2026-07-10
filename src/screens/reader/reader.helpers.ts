@@ -23,8 +23,10 @@ export type ReaderBlock =
   | { type: 'image'; src: string; alt: string }
   | { type: 'hr' };
 
-// A full-screen-viewable asset for the current chapter: a novel character portrait or chapter scene.
-export type ReaderAsset = { uri: string; label: string; kind: 'character' | 'scene' };
+type ImageBlock = Extract<ReaderBlock, { type: 'image' }>;
+
+// A full-screen-viewable image for the current chapter: an extracted inline chapter image or a scene.
+export type ReaderImageAsset = { uri: string; label: string };
 
 /**
  * Declaring the constants
@@ -34,6 +36,18 @@ const md = new MarkdownIt({ html: false, linkify: true, typographer: true, break
 
 export function parseMarkdown(source: string): ReaderBlock[] {
   return parseBlocks(md.parse(source, {}));
+}
+
+// Splits parsed blocks so images leave the reading flow (they surface in the chapter gallery instead)
+// while the remaining text blocks render as the chapter body.
+export function partitionBlocks(blocks: ReaderBlock[]): { textBlocks: ReaderBlock[]; imageBlocks: ImageBlock[] } {
+  const textBlocks: ReaderBlock[] = [];
+  const imageBlocks: ImageBlock[] = [];
+  for (const block of blocks) {
+    if (block.type === 'image') imageBlocks.push(block);
+    else textBlocks.push(block);
+  }
+  return { textBlocks, imageBlocks };
 }
 
 export function scrollFraction(offsetY: number, contentHeight: number, layoutHeight: number): number {

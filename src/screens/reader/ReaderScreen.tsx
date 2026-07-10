@@ -1,20 +1,18 @@
 /**
  * Importing npm packages
  */
-import { Stack } from 'expo-router';
 import { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { GestureDetector } from 'react-native-gesture-handler';
 
 /**
  * Importing user defined packages
  */
 import { content } from '@/core/content';
-import type { AppTheme, ReadingPalette } from '@/core/theme';
-import { useTheme } from '@/hooks/use-theme';
-import { AssetsOverlay } from '@/screens/reader/components/AssetsOverlay';
+import type { ReadingPalette } from '@/core/theme';
 import { ChapterFooter } from '@/screens/reader/components/ChapterFooter';
 import { MarkdownContent } from '@/screens/reader/components/MarkdownContent';
-import { ReaderSettingsSheet } from '@/screens/reader/components/ReaderSettingsSheet';
+import { ReaderSheet } from '@/screens/reader/components/ReaderSheet';
 import { useReaderScreen } from '@/screens/reader/hooks/useReaderScreen';
 
 /**
@@ -28,12 +26,11 @@ import { useReaderScreen } from '@/screens/reader/hooks/useReaderScreen';
 export function ReaderScreen() {
   const scrollRef = useRef<ScrollView | null>(null);
   const model = useReaderScreen(scrollRef);
-  const styles = createStyles(model.palette);
+  const styles = createStyles(model.palette, model.topInset, model.bottomInset);
 
   if (model.status === 'notFound') {
     return (
       <View style={styles.page}>
-        <Stack.Screen options={{ title: '' }} />
         <Text style={styles.notFound}>{content.common.notFound}</Text>
       </View>
     );
@@ -41,74 +38,117 @@ export function ReaderScreen() {
 
   return (
     <View style={styles.page}>
-      <Stack.Screen options={{ title: model.chapterTitle, headerRight: () => <HeaderSettingsButton onPress={model.openSettings} /> }} />
-      <ScrollView
-        ref={scrollRef}
-        onScroll={model.onScroll}
-        scrollEventThrottle={16}
-        onContentSizeChange={model.onContentSizeChange}
-        onLayout={model.onLayout}
-        contentContainerStyle={styles.content}>
-        <Pressable onPress={model.toggleAssets} accessibilityHint={content.reader.assets.hint}>
-          <MarkdownContent blocks={model.blocks} novelId={model.novelId} chapterPath={model.chapterPath} palette={model.palette} fontScale={model.fontScale} />
-          <ChapterFooter isLast={model.isLast} nextTitle={model.nextTitle} onNext={model.goToNextChapter} onBackToLibrary={model.goToLibrary} palette={model.palette} />
-        </Pressable>
-      </ScrollView>
-      <AssetsOverlay visible={model.assetsVisible} assets={model.assets} viewingAsset={model.viewingAsset} onSelect={model.openAsset} onClose={model.closeAssetView} />
-      <ReaderSettingsSheet
-        visible={model.settingsVisible}
+      <Animated.View style={[styles.slide, { transform: [{ translateY: model.slideY }] }]}>
+        <ScrollView
+          ref={scrollRef}
+          onScroll={model.onScroll}
+          onScrollBeginDrag={model.onScrollBeginDrag}
+          onScrollEndDrag={model.onScrollEndDrag}
+          scrollEventThrottle={16}
+          onContentSizeChange={model.onContentSizeChange}
+          onLayout={model.onLayout}
+          contentContainerStyle={styles.content}>
+          <GestureDetector gesture={model.contentGesture}>
+            <View>
+              <MarkdownContent blocks={model.textBlocks} palette={model.palette} fontScale={model.fontScale} fontFamily={model.fontFamily} />
+              <ChapterFooter isLast={model.isLast} nextTitle={model.nextTitle} onNext={model.goToNextChapter} onBackToLibrary={model.goToLibrary} palette={model.palette} />
+            </View>
+          </GestureDetector>
+        </ScrollView>
+      </Animated.View>
+      <View style={styles.progressBar} pointerEvents="none">
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${model.progressPercent}%` }]} />
+        </View>
+        <Text style={styles.progressPct}>{model.progressPercent}%</Text>
+      </View>
+      <ReaderSheet
+        visible={model.optionsVisible}
+        title={model.chapterTitle}
+        palette={model.palette}
+        bottomInset={model.bottomInset}
+        activeTab={model.activeTab}
+        onTab={model.setActiveTab}
+        onClose={model.closeOptions}
+        chapters={model.chapters}
+        currentIndex={model.currentIndex}
+        total={model.chapters.length}
+        percent={model.progressPercent}
+        canPrev={!model.isFirst}
+        canNext={!model.isLast}
+        onPrev={model.goToPrevChapter}
+        onNext={model.goToNextChapter}
+        onSeek={model.seekChapter}
+        onSelectChapter={model.selectChapter}
+        novelTitle={model.novelTitle}
+        coverUri={model.coverUri}
+        onAbout={model.openAbout}
+        characters={model.characterImages}
+        images={model.chapterImages}
+        scenes={model.galleryScenes}
         fontScale={model.fontScale}
+        fontFamily={model.fontFamily}
         theme={model.theme}
-        onClose={model.closeSettings}
-        onIncrease={model.increaseFont}
-        onDecrease={model.decreaseFont}
+        brightnessValue={model.brightnessValue}
+        onSetFontScale={model.setFontScale}
+        onSetBrightness={model.setBrightness}
         onSelectTheme={model.setTheme}
+        onSelectFontFamily={model.setFontFamily}
       />
     </View>
   );
 }
 
-function HeaderSettingsButton({ onPress }: { onPress: () => void }) {
-  const theme = useTheme();
-  const styles = createButtonStyles(theme);
-  return (
-    <Pressable accessibilityRole="button" accessibilityLabel={content.reader.settings.title} hitSlop={12} onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
-      <Text style={styles.label}>Aa</Text>
-    </Pressable>
-  );
-}
-
-function createStyles(palette: ReadingPalette) {
+function createStyles(palette: ReadingPalette, topInset: number, bottomInset: number) {
   return StyleSheet.create({
     page: {
       flex: 1,
       backgroundColor: palette.background,
     },
+    slide: {
+      flex: 1,
+    },
     content: {
       paddingHorizontal: 24,
-      paddingTop: 16,
-      paddingBottom: 64,
+      paddingTop: topInset + 16,
+      paddingBottom: bottomInset + 64,
       gap: 16,
+    },
+    progressBar: {
+      position: 'absolute',
+      left: 24,
+      right: 24,
+      bottom: bottomInset + 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    progressTrack: {
+      flex: 1,
+      height: 5,
+      borderRadius: 999,
+      backgroundColor: palette.progressTrack,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      borderRadius: 999,
+      backgroundColor: palette.progressFill,
+    },
+    progressPct: {
+      fontFamily: 'Inter_400Regular',
+      fontSize: 12,
+      color: palette.pct,
+      minWidth: 30,
+      textAlign: 'right',
     },
     notFound: {
       flex: 1,
       textAlign: 'center',
       textAlignVertical: 'center',
-      marginTop: 48,
+      marginTop: topInset + 48,
       color: palette.textSecondary,
       fontSize: 15,
-    },
-  });
-}
-
-function createButtonStyles(theme: AppTheme) {
-  return StyleSheet.create({
-    label: {
-      ...theme.type.bodyStrong,
-      color: theme.colors.accent,
-    },
-    pressed: {
-      opacity: 0.5,
     },
   });
 }
