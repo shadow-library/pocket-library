@@ -48,6 +48,10 @@ export function ReaderGalleryPanel({ palette, characters, images, scenes }: Read
   const [viewer, setViewer] = useState<OpenViewer | null>(null);
   const styles = createStyles(palette);
   const chapterAssets = [...images, ...scenes];
+  // Every character's images concatenated so a swipe crosses characters and their outfits; each avatar
+  // opens the flat set at the offset where that character begins.
+  const characterImages = characters.flatMap((character) => character.images);
+  const characterStart = characters.map((_character, index) => characters.slice(0, index).reduce((sum, prior) => sum + prior.images.length, 0));
 
   if (chapterAssets.length === 0 && characters.length === 0) return <Text style={styles.empty}>{content.reader.gallery.empty}</Text>;
 
@@ -86,7 +90,7 @@ export function ReaderGalleryPanel({ palette, characters, images, scenes }: Read
                 label={character.name}
                 accessibilityLabel={character.name}
                 badgeCount={character.images.length - 1}
-                onPress={() => setViewer({ images: character.images, startIndex: 0 })}
+                onPress={() => setViewer({ images: characterImages, startIndex: characterStart[index] })}
                 styles={styles}
               />
             ))}

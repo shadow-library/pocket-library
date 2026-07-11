@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 /**
  * Importing user defined packages
  */
+import { TabBarButton } from '@/components/tab-bar-button';
 import { content } from '@/core/content';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -19,8 +20,8 @@ import { useTheme } from '@/hooks/use-theme';
  * Declaring the constants
  */
 
-const TAB_BAR_BASE_HEIGHT = 68;
-const TAB_BAR_VERTICAL_PADDING = 10;
+const TAB_BAR_BASE_HEIGHT = 84;
+const TAB_BAR_VERTICAL_PADDING = 16;
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -42,6 +43,7 @@ export default function TabsLayout() {
         },
         tabBarIconStyle: { marginBottom: 4 },
         tabBarLabelStyle: { fontFamily: 'Inter_500Medium', fontSize: 11 },
+        tabBarButton: (props) => <TabBarButton {...props} />,
         sceneStyle: { backgroundColor: theme.colors.background },
       }}>
       <Tabs.Screen name="index" options={{ title: content.tabs.library, tabBarIcon: ({ color, size }) => <Feather name="book-open" color={color} size={size} /> }} />

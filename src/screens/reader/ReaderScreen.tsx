@@ -53,9 +53,9 @@ export function ReaderScreen() {
             overScrollMode="never"
             onContentSizeChange={model.onContentSizeChange}
             onLayout={model.onLayout}
-            contentContainerStyle={styles.content}>
+            contentContainerStyle={styles.scroll}>
             <GestureDetector gesture={model.contentGesture}>
-              <View>
+              <View style={styles.content}>
                 <MarkdownContent blocks={model.textBlocks} palette={model.palette} fontScale={model.fontScale} fontFamily={model.fontFamily} />
                 <ChapterFooter isLast={model.isLast} onBackToLibrary={model.goToLibrary} palette={model.palette} />
               </View>
@@ -119,7 +119,14 @@ function createStyles(palette: ReadingPalette, topInset: number, bottomInset: nu
       height: topInset,
       backgroundColor: palette.background,
     },
+    // The content view (not the scroll container) carries the padding and grows to fill the viewport,
+    // so the pull gesture receives touches across the whole reading area — including the empty buffer
+    // below the last line, where an upward pull must still advance the chapter.
+    scroll: {
+      flexGrow: 1,
+    },
     content: {
+      flexGrow: 1,
       paddingHorizontal: 24,
       paddingTop: topInset + 16,
       paddingBottom: bottomInset + PULL_BUFFER,

@@ -34,11 +34,14 @@ const AVATAR_SIZE = 72;
 export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
-  // The tapped character; its portrait + variants feed the full-screen swipe viewer.
-  const [selected, setSelected] = useState<number | null>(null);
+  // Where the viewer opens in the flat all-characters image list; null keeps it closed.
+  const [startIndex, setStartIndex] = useState<number | null>(null);
 
+  // Every character's portrait + variants concatenated into one swipe set, so the viewer can move
+  // across characters and their outfits alike. Each character records where its images begin.
   const perCharacter = characters.map((character) => libraryService.characterImages(novelId, character));
-  const viewerImages: ViewerImage[] = selected === null ? [] : perCharacter[selected];
+  const allImages: ViewerImage[] = perCharacter.flat();
+  const startByCharacter = perCharacter.map((images, index) => (images.length === 0 ? -1 : perCharacter.slice(0, index).reduce((sum, prior) => sum + prior.length, 0)));
 
   return (
     <View style={styles.section}>
@@ -53,7 +56,7 @@ export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
               disabled={images.length === 0}
               accessibilityRole="button"
               accessibilityLabel={character.name}
-              onPress={() => setSelected(index)}>
+              onPress={() => setStartIndex(startByCharacter[index])}>
               <View style={styles.avatarWrap}>
                 {images.length > 0 ? (
                   <Image source={{ uri: images[0].uri }} style={styles.avatar} contentFit="cover" transition={150} />
@@ -71,7 +74,7 @@ export function CharacterStrip({ novelId, characters }: CharacterStripProps) {
           );
         })}
       </ScrollView>
-      <FullScreenImageViewer images={viewerImages} startIndex={selected === null ? null : 0} onClose={() => setSelected(null)} />
+      <FullScreenImageViewer images={allImages} startIndex={startIndex} onClose={() => setStartIndex(null)} />
     </View>
   );
 }
